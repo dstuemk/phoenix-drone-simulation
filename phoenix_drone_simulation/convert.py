@@ -22,23 +22,16 @@ if __name__ == '__main__':
     )
     parser.add_argument('--ckpt', type=str, required=True,
                         help='Name path of the file to be converted.}')
-    parser.add_argument('--output', type=str, default='json',
-                        help='Choose output file format: [onnx, json].}')
+    parser.add_argument('--output', type=str, default='h5',
+                        help='Choose output file format: [h5].}')
     args = parser.parse_args()
 
     assert os.path.exists(args.ckpt)
-    if args.output == 'onnx':
-        # load a saved checkpoint file (.pt), extract the actor network from
-        # the ActorCritic module and save as .ONXX file to disk space
-        export.convert_to_onxx_file_format(args.ckpt)
-    elif args.output == 'json':
-        # Convert PyTorch module to JSON file and save to disk.
+    if args.output == 'h5':
         ac, env = utils.load_actor_critic_and_env_from_disk(args.ckpt)
-        print(f'file_name_path=args.ckpt: {args.ckpt}')
-        export.convert_actor_critic_to_json(
+        export.convert_actor_critic_to_h5(
             actor_critic=ac,
             file_path=args.ckpt
         )
-
     else:
-        raise ValueError('Expecting json or onnx as file output.')
+        raise ValueError('Expecting h5 file output.')

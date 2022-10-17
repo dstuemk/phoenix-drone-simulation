@@ -13,7 +13,10 @@ import phoenix_drone_simulation.utils.utils as U
 from phoenix_drone_simulation.utils.loggers import setup_logger_kwargs
 
 
-IMPLEMENTED_ALGS = ['iwpg', 'npg', 'trpo', 'ppo' ]
+IMPLEMENTED_ALGS = [ 
+    #'iwpg', 'npg', 'trpo', 
+     'ppo' 
+]
 
 class TestAlgorithms(unittest.TestCase):
 

@@ -7,9 +7,11 @@ based on:   Spinning Up's Repository
             Successful Ingredients of Policy Gradient Algorithms
             https://github.com/SvenGronauer/successful-ingredients-paper
 """
+from importlib.resources import is_resource
 import numpy as np
 import gym
 import time
+import random
 import torch
 import os
 from copy import deepcopy
@@ -30,6 +32,7 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             env_id: str,
             epochs: int,
             logger_kwargs: dict,
+            critic: str,
             adv_estimation_method: str = 'gae',
             alg='iwpg',
             check_freq: int = 25,
@@ -52,10 +55,14 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             use_linear_lr_decay: bool = True,
             use_max_grad_norm: bool = False,
             use_reward_scaling: bool = True,
-            use_shared_weights: bool = False,
             use_standardized_advantages: bool = False,
-            use_standardized_obs: bool = True,
+            # use_standardized_obs < 0      : No standardization
+            # 0 <= use_standardized_obs < 1 : Standardize (but stop updating mean / std)
+            # 1 <= use_standardized_obs     : Standardize
+            use_standardized_obs: float = 1.0,
             verbose: bool = True,
+            seq_len: int = 32,      # Splits path into smaller sequences
+            seq_overlap: int = 16,  # Sequences overlap e.g. 16 timesteps
             vf_lr: float = 1e-3,
             weight_initialization: str = 'kaiming_uniform',
             save_freq: int = 10,
@@ -108,6 +115,9 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
         self.use_standardized_advantages = use_standardized_advantages
         self.video_freq = video_freq
         self.vf_lr = vf_lr
+        self.seq_len = seq_len
+        self.seq_overlap = seq_overlap
+        
 
         # ==== Call assertions....
         self._sanity_checks()
@@ -129,11 +139,11 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
         # === Setup actor-critic module
         self.ac = core.ActorCritic(
             actor_type=actor,
+            critic_type=critic,
             observation_space=self.env.observation_space,
             action_space=self.env.action_space,
-            use_standardized_obs=use_standardized_obs,
+            use_standardized_obs=use_standardized_obs >= 0.0,
             use_scaled_rewards=use_reward_scaling,
-            use_shared_weights=use_shared_weights,
             weight_initialization=weight_initialization,
             ac_kwargs=ac_kwargs
         )
@@ -151,7 +161,7 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             lam=lam,
             adv_estimation_method=adv_estimation_method,
             use_scaled_rewards=use_reward_scaling,
-            standardize_env_obs=use_standardized_obs,
+            standardize_env_obs=use_standardized_obs >= 0.0,
             standardize_advantages=use_standardized_advantages,
         )
 
@@ -166,6 +176,9 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
         # Set up model saving
         self.logger.setup_torch_saver(self.ac)
         self.logger.torch_save()
+
+        # Set up best epsiode return value
+        self.best_ep_ret = -float('inf')
 
         # setup statistics
         self.start_time = time.time()
@@ -236,26 +249,6 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
                 global_max = mpi_tools.mpi_max(np.sum(flat_params))
                 assert np.allclose(global_min, global_max), f'{key} not synced.'
 
-    def compute_loss_pi(self, data: dict) -> tuple:
-        # Policy loss
-        dist, _log_p = self.ac.pi(data['obs'], data['act'])
-        ratio = torch.exp(_log_p - data['log_p'])
-
-        loss_pi = -(ratio * data['adv']).mean()
-        loss_pi -= self.entropy_coef * dist.entropy().mean()
-
-        # Useful extra info
-        approx_kl = (0.5 * (dist.mean - data['act']) ** 2
-                     / dist.stddev ** 2).mean().item()
-        ent = dist.entropy().mean().item()
-        pi_info = dict(kl=approx_kl, ent=ent, ratio=ratio.mean().item())
-
-        return loss_pi, pi_info
-
-    def compute_loss_v(self, obs, ret) -> torch.Tensor:
-        r"""Set up function for computing value loss."""
-        return ((self.ac.v(obs) - ret) ** 2).mean()
-
     def learn(self) -> tuple:
         # Main loop: collect experience in env and update/log each epoch
         for self.epoch in range(self.epochs):
@@ -271,7 +264,10 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
 
         if self.use_exploration_noise_anneal:  # update internals of AC
             self.ac.update(frac=self.epoch / self.epochs)
-        self.roll_out()  # collect data and store to buffer
+        # collect data and store to buffer
+        self.roll_out()  
+        # Save old policy if it achieved best performance so far
+        self.log_before_update(self.epoch)
         # Perform policy + value function updates
         # Also updates running statistics
         self.update()
@@ -282,6 +278,20 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             self.check_distributed_parameters()
         # Save model to disk
         if is_last_epoch or self.epoch % self.save_freq == 0:
+            self.logger.save_state(state_dict={}, itr=self.epoch+1)
+    
+    def log_before_update(self, epoch: int) -> None:
+        """ Call this method after roll_out() and before update() """
+        self.logger.log_tabular('Epoch', epoch + 1)
+
+        ep_ret_stats = self.logger.log_tabular('EpRet', min_and_max=True, std=True)
+        # Find overall best model        
+        ep_ret_mean = ep_ret_stats[0]
+        ep_ret_max = max(ep_ret_mean, self.best_ep_ret)
+        self.best_ep_ret = ep_ret_max
+        if ep_ret_mean == ep_ret_max:
+            # Save overall best model (was trained in pervious epoch!)
+            self.logger.info(f"Save new best model from epoch {epoch} ({ep_ret_max})")
             self.logger.save_state(state_dict={}, itr=None)
 
     def log(self, epoch: int) -> None:
@@ -294,8 +304,7 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
         else:
             current_lr = self.pi_lr
 
-        self.logger.log_tabular('Epoch', epoch + 1)
-        self.logger.log_tabular('EpRet', min_and_max=True, std=True)
+        # Continue logging
         self.logger.log_tabular('EpLen', min_and_max=True)
         self.logger.log_tabular('Values/V', min_and_max=True)
         self.logger.log_tabular('Values/Adv', min_and_max=True)
@@ -340,16 +349,62 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             holding pre-processed data, i.e. observations and rewards
         """
         data = deepcopy(raw_data)
-
-        if self.use_standardized_obs:
+        if self.use_standardized_obs >= 0.0:
             assert 'obs' in data
             obs = data['obs']
             data['obs'] = self.ac.obs_oms(obs, clip=False)
         return data
+    
+    def _prepare_batches(self, data: dict) -> dict:
+        """ Generates batches from independend paths. Batches all have the length of the
+            configured sequence length.
+            If path is not long enouth it gets padded and the padded values get masked out.
+
+        Args:
+            data (dict): dictionary holding information obtain from environment interactions
+
+        Returns:
+            dict: holding batched data with additional mask entry
+        """
+        path_slice_vals = data.pop("path_slice")
+        # Re-slice with selected sequence length
+        path_slice_new = []
+        # Change slice sizes to sequence length
+        l = max(self.seq_overlap,1)
+        for s in path_slice_vals:
+            for start_idx in range(int(s[0]), int(s[1]), l):
+                path_slice_new.append([
+                    int(start_idx),
+                    int(min(start_idx + self.seq_len, s[1]))
+                ])               
+        path_slice_vals = path_slice_new
+        # Pad sequences
+        l = max( s[1] - s[0] for s in path_slice_vals )
+        data_batched = {
+            k: [ 
+                torch.nn.functional.pad(
+                    data[k][s[0]:s[1]], 
+                    (*([0]*(len(data[k].size())*2 - 1)),l - s[1] + s[0]), 
+                    'constant', 
+                    0.0 
+                ) for s in path_slice_vals ] for k in data.keys()}
+        # Generate Mask
+        data_batched['mask'] = [ 
+            torch.nn.functional.pad( 
+                torch.as_tensor( [*([1.0]*(s[1] - s[0]))], dtype=torch.float32 ), 
+                (0, l - s[1] + s[0]) , 
+                'constant', 
+                0.0 
+            ) for s in path_slice_vals]
+            
+        return {k: torch.stack(v) for k, v in
+                data_batched.items()}
 
     def roll_out(self) -> None:
         """collect data and store to experience buffer."""
         o, ep_ret, ep_len = self.env.reset(), 0., 0
+        self.ac.v.reset_states()
+        self.ac.pi.reset_states()
 
         for t in range(self.local_steps_per_epoch):
             a, v, logp = self.ac.step(
@@ -378,6 +433,8 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
                 else:
                     v = 0.
                 self.buf.finish_path(v)
+                self.ac.v.reset_states()
+                self.ac.pi.reset_states()
                 if terminal:  # only save EpRet / EpLen if trajectory finished
                     self.logger.store(EpRet=ep_ret, EpLen=ep_len)
                 o, ep_ret, ep_len = self.env.reset(), 0., 0
@@ -386,7 +443,7 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
         """ Update running statistics, e.g. observation standardization,
         or reward scaling. If MPI is activated: sync across all processes.
         """
-        if self.use_standardized_obs:
+        if self.epoch <= self.epochs*self.use_standardized_obs:
             self.ac.obs_oms.update(data['obs'])
 
         # Apply Implement Reward scaling
@@ -404,14 +461,23 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
         # pre-process data: standardize observations, advantage estimation, etc.
         data = self.pre_process_data(raw_data)
 
-        self.update_value_net(data=data)
-        self.update_policy_net(data=data)
+        batched_data = self._prepare_batches(data)
+        self.update_value_net(batched_data)
+        self.update_policy_net(batched_data)
 
         # Update running statistics, e.g. observation standardization
         # Note: observations from are raw outputs from environment
         self.update_running_statistics(raw_data)
+    
+    def prepare_memory(self) -> None:
+        """ Prepare initial memory state of actor and critic
+        """
+        self.ac.pi.reset_states()
+        self.ac.v.reset_states()
 
     def update_policy_net(self, data) -> None:
+        # initial RNN states
+        self.prepare_memory()
         # Get loss and info values before update
         pi_l_old, pi_info_old = self.compute_loss_pi(data)
         self.loss_pi_before = pi_l_old.item()
@@ -420,6 +486,8 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
 
         # Train policy with multiple steps of gradient descent
         for i in range(self.train_pi_iterations):
+            # initial RNN states
+            self.prepare_memory()
             self.pi_optimizer.zero_grad()
             loss_pi, pi_info = self.compute_loss_pi(data=data)
             loss_pi.backward()
@@ -448,31 +516,39 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             'Entropy': pi_info['ent'],
             'KL': torch_kl,
             'PolicyRatio': pi_info['ratio']
-        })
+        }) 
 
-    def update_value_net(self, data: dict) -> None:
-        mbs = int(self.local_steps_per_epoch // self.num_mini_batches)
-        assert mbs > 1, f'Batch size must be greater than 1. Currently: {mbs}'
-        if mbs < 16:
-            loggers.warn(f'Batch size is low: {mbs}')
+    def update_value_net(self, data) -> None:
+        no_batches = data["adv"].size()[0]
+        mbs = int(max(no_batches / self.num_mini_batches, 1))
 
-        loss_v = self.compute_loss_v(data['obs'], data['target_v'])
+        if no_batches < self.num_mini_batches:
+            loggers.warn(f"No. of batches ({no_batches}) " \
+                + f"smaller than no. mini batches ({self.num_mini_batches})")
+        
+        # initial RNN states
+        self.prepare_memory()
+        loss_v = self.compute_loss_v(data['obs'], data['target_v'], data['mask'])
         self.loss_v_before = loss_v.item()
 
-        indices = np.arange(self.local_steps_per_epoch)
+        indices = np.arange(no_batches)
         val_losses = []
+        start_indices = list(range(0, no_batches, mbs))
         for _ in range(self.train_v_iterations):
-            np.random.shuffle(indices)  # shuffle for mini-batch updates
-            # 0 to mini_batch_size with batch_train_size step
-            for start in range(0, self.local_steps_per_epoch, mbs):
+            random.shuffle(start_indices)
+            for start_idx in range(self.num_mini_batches):
+                start = start_indices[start_idx % len(start_indices)]
                 end = start + mbs  # iterate mini batch times
-                mb_indices = indices[start:end]
+                mb_indices = indices[start:end]           
+                # initial RNN states
+                self.prepare_memory()
                 self.vf_optimizer.zero_grad()
                 loss_v = self.compute_loss_v(
                     obs=data['obs'][mb_indices],
-                    ret=data['target_v'][mb_indices])
-                loss_v.backward()
+                    ret=data['target_v'][mb_indices],
+                    mask=data['mask'][mb_indices])
                 val_losses.append(loss_v.item())
+                loss_v.backward()
                 # average grads across MPI processes
                 mpi_tools.mpi_avg_grads(self.ac.v)
                 self.vf_optimizer.step()
@@ -482,6 +558,32 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             'Loss/Value': self.loss_v_before,
         })
 
+    def compute_loss_pi(self, data) -> tuple:
+        # Policy loss
+        dist, _log_p = self.ac.pi(data['obs'], data['act'])
+        ratio = torch.exp(_log_p - data['log_p'])
+
+        mask_mean = data['mask'].mean()
+        adv_masked = (data['adv'] * data['mask'])
+
+        loss_pi = -(ratio * adv_masked).mean() / mask_mean
+        loss_pi -= self.entropy_coef * dist.entropy().mean()
+
+        # Useful extra info
+        approx_kl = (0.5 * (dist.mean - data['act']) ** 2
+                     / dist.stddev ** 2).mean().item()
+        ent = dist.entropy().mean().item()
+        pi_info = dict(kl=approx_kl, ent=ent, ratio=ratio.mean().item())
+
+        return loss_pi, pi_info
+
+    def compute_loss_v(self, obs, ret, mask) -> torch.Tensor:
+        r"""Set up function for computing value loss."""
+        obs_m = obs*torch.unsqueeze(mask, -1)
+        ret_m = ret*mask
+        mask_mean = mask.mean()
+        # Divide by masks mean (only 0 and 1 entries), too
+        return ((self.ac.v(obs_m) - ret_m) ** 2).mean() / mask_mean
 
 def get_alg(env_id, **kwargs) -> core.Algorithm:
     return IWPGAlgorithm(

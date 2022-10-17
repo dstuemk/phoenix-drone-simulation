@@ -553,8 +553,12 @@ class EpochLogger(Logger):
 
             std (bool): If true, do log the standard deviation
                 of the diagnostic over the epoch.
+        
+        Returns:
+            Diagnostic value or stats array
         """
         if val is not None:
+            stats = val
             super().log_tabular(key, val)
         else:
             stats = self.get_stats(key, min_and_max)
@@ -568,3 +572,4 @@ class EpochLogger(Logger):
                 super().log_tabular(key + '/Min', stats[2])
                 super().log_tabular(key + '/Max', stats[3])
         self.epoch_dict[key] = []
+        return stats

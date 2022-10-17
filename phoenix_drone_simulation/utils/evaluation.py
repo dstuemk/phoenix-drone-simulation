@@ -90,6 +90,7 @@ class EnvironmentEvaluator(object):
     def eval_once(self):
         assert not self.ac.training, 'Call actor_critic.eval() beforehand.'
         done = False
+        self.ac.reset_states()
         x = self.env.reset()
         ret = 0.
         costs = 0.

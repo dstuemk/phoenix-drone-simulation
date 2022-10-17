@@ -89,7 +89,7 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument('--ckpt', type=str, default=None,
-                        help='Choose from: {ppo, trpo}')
+                        help='Choose from: [ppo]')
     parser.add_argument('--env', type=str,
                         help='Example: HopperBulletEnv-v0')
     parser.add_argument('--random', action='store_true',

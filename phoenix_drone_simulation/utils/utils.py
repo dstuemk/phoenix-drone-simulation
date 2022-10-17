@@ -132,7 +132,6 @@ def get_actor_critic_and_env_from_json_model(
         action_space=env.action_space,
         use_standardized_obs=True,
         use_scaled_rewards=True,
-        use_shared_weights=False,
         ac_kwargs=actor_config['ac_kwargs']
     )
 
@@ -495,7 +494,6 @@ def load_actor_critic_and_env_from_disk(
             action_space=env.action_space,
             use_standardized_obs=conf['use_standardized_obs'],
             use_scaled_rewards=conf['use_reward_scaling'],
-            use_shared_weights=False,
             ac_kwargs=conf['ac_kwargs']
         )
     model_path = os.path.join(file_name_path, 'torch_save', 'model.pt')

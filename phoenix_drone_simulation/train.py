@@ -58,7 +58,7 @@ def get_training_command_line_args(
     else:  # --add alg as required console argument
         parser.add_argument(
             '--alg', type=str, required=True,
-            help='Choose from: {iwpg, ppo, trpo, npg}')
+            help='Choose from: [ppo]')
 
     parser.add_argument(
         '--cores', '-c', type=int, default=physical_cores,
@@ -78,9 +78,9 @@ def get_training_command_line_args(
     parser.add_argument(
         '--no-mpi', action='store_true',
         help='Do not use MPI for parallel execution.')
-    parser.add_argument(
-        '--pi', nargs='+',  # creates args as list: pi=['64,', '64,', 'relu']
-        help='Structure of policy network. Usage: --pi 64 64 relu')
+    #parser.add_argument(
+    #    '--pi', nargs='+',  # creates args as list: pi=['64,', '64,', 'relu']
+    #    help='Structure of policy network. Usage: --pi 64 64 relu')
     parser.add_argument(
         '--play', action='store_true',
         help='Visualize agent after training.')
@@ -122,17 +122,17 @@ def run_training(args, unparsed_args, exp_name=None):
     algorithm_kwargs = utils.get_defaults_kwargs(alg=args.alg, env_id=args.env)
 
     # update algorithm_kwargs with unparsed arguments from command line:
-    algorithm_kwargs.update(**unparsed_kwargs)
-
-    if args.pi is not None:
-        hidden_sizes = tuple(eval(s) for s in args.pi[:-1])
-        assert np.all([isinstance(s, int) for s in hidden_sizes]), \
-            f'Hidden sizes must be of type: int'
-        activation = args.pi[-1]
-        assert isinstance(activation, str), 'Activation expected as string.'
-
-        algorithm_kwargs['ac_kwargs']['pi']['hidden_sizes'] = hidden_sizes
-        algorithm_kwargs['ac_kwargs']['pi']['activation'] = activation
+    #algorithm_kwargs.update(**unparsed_kwargs)
+    #
+    #if args.pi is not None:
+    #    hidden_sizes = tuple(eval(s) for s in args.pi[:-1])
+    #    assert np.all([isinstance(s, int) for s in hidden_sizes]), \
+    #        f'Hidden sizes must be of type: int'
+    #    activation = args.pi[-1]
+    #    assert isinstance(activation, str), 'Activation expected as string.'
+    #
+    #    algorithm_kwargs['ac_kwargs']['pi']['hidden_sizes'] = hidden_sizes
+    #    algorithm_kwargs['ac_kwargs']['pi']['activation'] = activation
 
     mpi_print('=' * 55)
     mpi_print('Parsed algorithm kwargs:')

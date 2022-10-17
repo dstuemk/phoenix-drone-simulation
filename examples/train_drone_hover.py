@@ -30,7 +30,7 @@ def main():
     # NEW: use algorithms implemented in phoenix_drone_simulation:
     # 1) Setup learning model
     model = Model(
-        alg='ppo',  # choose between: trpo, ppo
+        alg='ppo',  # choose between: ppo
         env_id=env_id,
         log_dir=default_log_dir,
         init_seed=random_seed,

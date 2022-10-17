@@ -5,12 +5,19 @@
 
 def defaults():
     return dict(
-        actor='mlp',
+        actor='recurrent',
+        critic='recurrent',
         ac_kwargs={
-            'pi': {'hidden_sizes': (50, 50),
-                   'activation': 'relu'},
-            'val': {'hidden_sizes': (64, 64),
-                    'activation': 'tanh'}
+            'pi': {
+                'activation': 'identity', 
+                'hidden_sizes': [18, 18],
+                'layer': 'GRU'
+            }, 
+            'val': {
+                'activation': 'identity', 
+                'hidden_sizes': [128, 128],
+                'layer': 'GRU'
+            }
         },
         adv_estimation_method='gae',
         epochs=300,  # 3.2M steps
