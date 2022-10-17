@@ -370,7 +370,7 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
         # Re-slice with selected sequence length
         path_slice_new = []
         # Change slice sizes to sequence length
-        l = max(self.seq_overlap,1)
+        l = max(self.seq_len - self.seq_overlap,1)
         for s in path_slice_vals:
             for start_idx in range(int(s[0]), int(s[1]), l):
                 path_slice_new.append([
