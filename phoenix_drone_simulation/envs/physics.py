@@ -187,6 +187,7 @@ class SimplePhysics(BasePhysics):
         self.drone.quaternion = quaternion
         self.drone.rpy = rpy  # [rad] in cartesian world coordinates
         self.drone.xyz_dot = vel  # [m/s] in cartesian world coordinates
+        self.drone.xyz_acc = acc_linear # [m/s^2] in cartesian world coordinates
         self.drone.rpy_dot = rpy_dot  # [rad/s] in body frame
         self.bc.resetBasePositionAndOrientation(
             self.drone.body_unique_id,
