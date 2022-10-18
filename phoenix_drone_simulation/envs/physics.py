@@ -121,7 +121,8 @@ class PyBulletPhysics(BasePhysics):
 
         # step simulation once forward and collect information from PyBullet
         self.bc.stepSimulation()
-        self.drone.update_information()
+        self.drone.update_information()        
+        self.drone.calculate_acceleration()
 
 
 class SimplePhysics(BasePhysics):
