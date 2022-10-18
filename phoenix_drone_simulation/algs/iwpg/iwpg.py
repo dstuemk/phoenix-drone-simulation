@@ -84,7 +84,7 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
 
         # Collect information from environment if it has an time wrapper
         if hasattr(self.env, '_max_episode_steps'):
-            max_ep_len = self.env._max_episode_steps
+            max_ep_len = min(max_ep_len, self.env._max_episode_steps)
 
         self.adv_estimation_method = adv_estimation_method
         self.alg = alg
