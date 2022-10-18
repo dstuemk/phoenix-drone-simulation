@@ -112,41 +112,6 @@ class DroneTakeOffBaseEnv(DroneBaseEnv):
             posObj=self.target_pos,
             ornObj=(0, 0, 0, 1)
         )
-
-        #if self.observation_noise > 0:  # add noise only for positive values
-        #    if self.iteration % self.obs_rate == 0:
-        #        # update state information with 100 Hz (except for rpy_dot)
-        #        # apply noise to perfect simulation state:
-        #        xyz, vel, rpy, omega, acc = self.sensor_noise.add_noise(
-        #            pos=self.drone.xyz,
-        #            vel=self.drone.xyz_dot,
-        #            rot=self.drone.rpy,
-        #            omega=self.drone.rpy_dot,
-        #            acc=np.zeros(3),  # irrelevant
-        #            dt=1/self.SIM_FREQ
-        #        )
-        #        quat = np.asarray(self.bc.getQuaternionFromEuler(rpy))
-        #        error_to_ref = self.target_pos - xyz
-        #        self.state = np.concatenate(
-        #            [xyz, quat, vel, omega, self.drone.last_action])
-        #    else:
-        #        # This part runs with >100Hz, re-use Kalman Filter values:
-        #        xyz, quat, vel = self.state[0:3], self.state[3:7], self.state[7:10]
-        #        error_to_ref = self.ref[t] - xyz
-        #        # read Gyro data with >100 Hz and add noise:
-        #        omega = self.sensor_noise.add_noise_to_omega(
-        #            omega=self.drone.rpy_dot, dt=1/self.SIM_FREQ)
-        #
-        #    # apply low-pass filtering to gyro (happens with 100Hz):
-        #    omega = self.gyro_lpf.apply(omega)
-        #    obs = np.concatenate(
-        #        [xyz, quat, vel, omega, self.drone.last_action, error_to_ref])
-        #else:
-        #    # no observation noise is applied
-        #    error_to_ref = self.target_pos - self.drone.xyz
-        #    obs = np.concatenate([self.drone.get_state(), error_to_ref])
-        #return obs
-
         return super().compute_observation(target_pos=self.target_pos)
 
     def compute_potential(self) -> float:

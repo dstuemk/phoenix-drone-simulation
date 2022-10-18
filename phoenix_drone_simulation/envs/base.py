@@ -39,7 +39,7 @@ class DroneBaseEnv(gym.Env, abc.ABC):
             motor_time_constant: float = 0.080,  # [s]
             motor_thrust_noise: float = 0.05,  # noise in % added to thrusts
             observation_frequency: int = 100,
-            observation_history_size: int = 2,
+            observation_history_size: int = 1,
             observation_noise=0.0,  # default: no noise added to obs
             observation_model='state',
             sim_freq: int = 200
@@ -325,9 +325,6 @@ class DroneBaseEnv(gym.Env, abc.ABC):
     @abc.abstractmethod
     def compute_observation(self, target_pos=None) -> np.ndarray:
         """Returns the current observation of the environment."""
-        
-        # ===> Old Code
-        #raise NotImplementedError
 
         # ===> New Code
         obs_mask = {
