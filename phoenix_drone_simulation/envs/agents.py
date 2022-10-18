@@ -4,6 +4,7 @@ Author:     Sven Gronauer
 Created:    14.04.2021
 Updates:    17.05.2021
 """
+import collections
 import numpy as np
 import pybullet as pb
 from pybullet_utils import bullet_client
@@ -205,6 +206,11 @@ class CrazyFlieAgent(AgentBase):
         # sigma = 0.2 gives roughly max noise of -1 .. 1
         self.thrust_noise = OUNoise(self.act_dim, sigma=0.2*self.MOTOR_THRUST_NOISE)
 
+        # Last velocity, used to calculate acceleration which is not provided by bullet
+        self.last_xyz_dot = None
+        self.xyz_acc = np.zeros((3,), dtype=np.float64)
+        self._xyz_acc_queue = collections.deque([self.xyz_acc.copy() for _ in range(aggregate_phy_steps) ])
+
     def update_motor_dynamics(
             self,
             new_motor_time_constant: Optional[np.ndarray] = None,
@@ -384,6 +390,8 @@ class CrazyFlieAgent(AgentBase):
         self.action_idx = 0
         self.action_buffer = np.zeros_like(self.action_buffer)
         self.last_action = self.action_buffer[-1, :]
+        self.last_xyz_dot = None
+        self._xyz_acc_queue = collections.deque([v*0 for v in self._xyz_acc_queue])
 
     def set_latency(self,
                     new_latency: float
@@ -450,7 +458,18 @@ class CrazyFlieAgent(AgentBase):
         self.xyz_dot = np.array(xyz_dot_world, dtype=np.float64)  # [m/s] in world frame
         # FIXED: transform omega from world frame to local drone frame
         R = np.asarray(self.bc.getMatrixFromQuaternion(quat)).reshape((3, 3))
-        self.rpy_dot = R.T @ np.array(rpy_dot_world, dtype=np.float64)  # [rad/s] in body frame
+        self.rpy_dot = R.T @ np.array(rpy_dot_world, dtype=np.float64)  # [rad/s] in body frame   
+
+    def calculate_acceleration(self):        
+        # Calculate acceleration with finite differences between two time steps
+        if self.last_xyz_dot is None:
+            xyz_acc = np.zeros((3,), dtype=np.float64)
+        else:
+            xyz_acc = (self.xyz_dot - self.last_xyz_dot) / self.T_s
+        self._xyz_acc_queue[0] = xyz_acc
+        self._xyz_acc_queue.rotate(1)
+        self.xyz_acc = np.mean(self._xyz_acc_queue,axis=0)
+        self.last_xyz_dot = self.xyz_dot     
 
 
 class CrazyFlieBulletAgent(CrazyFlieAgent):
