@@ -342,16 +342,22 @@ class CrazyFlieAgent(AgentBase):
             flags=pb.LINK_FRAME
         )
 
-    def get_state(self
-                  ) -> np.ndarray:
+    def get_state(self,
+                  xyz=True,
+                  quaternion=True,
+                  xyz_dot=True,
+                  xyz_acc=True,
+                  rpy_dot=True,
+                  last_action=True) -> np.ndarray:
         state = np.concatenate([
-            self.xyz,
-            self.quaternion,
-            self.xyz_dot,
-            self.rpy_dot,  # local body frame
-            self.last_action
+            self.xyz.tolist()*xyz,
+            self.quaternion.tolist()*quaternion,
+            self.xyz_dot.tolist()*xyz_dot,
+            self.xyz_acc.tolist()*xyz_acc,
+            self.rpy_dot.tolist()*rpy_dot,  # local body frame
+            self.last_action.tolist()*last_action
         ])
-        return state.reshape(17, )
+        return state.reshape(-1, )
 
     def load_assets(self
                     ) -> int:

@@ -41,6 +41,7 @@ class DroneBaseEnv(gym.Env, abc.ABC):
             observation_frequency: int = 100,
             observation_history_size: int = 2,
             observation_noise=0.0,  # default: no noise added to obs
+            observation_model='state',
             sim_freq: int = 200
     ):
         """
@@ -100,6 +101,8 @@ class DroneBaseEnv(gym.Env, abc.ABC):
         assert aggregate_phy_steps >= 1
 
         # === Setup sensor and observation settings
+        assert observation_model in ['sensor', 'state']
+        self.observation_model = observation_model
         self.observation_frequency = observation_frequency
         self.obs_rate = int(sim_freq // observation_frequency)
         self.gyro_lpf = LowPassFilter(gain=1., time_constant=2/sim_freq,
@@ -320,9 +323,64 @@ class DroneBaseEnv(gym.Env, abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def compute_observation(self) -> np.ndarray:
+    def compute_observation(self, target_pos=None) -> np.ndarray:
         """Returns the current observation of the environment."""
-        raise NotImplementedError
+        
+        # ===> Old Code
+        #raise NotImplementedError
+
+        # ===> New Code
+        obs_mask = {
+            'xyz':        self.observation_model in ['state'],
+            'quaternion': self.observation_model in ['state'],
+            'xyz_dot':    self.observation_model in ['state'],
+            'xyz_acc':    self.observation_model in ['sensor'],
+            'rpy_dot':    self.observation_model in ['sensor','state'],
+        }
+
+        if self.observation_noise > 0:  # add noise only for positive values
+            if self.iteration % self.obs_rate == 0:
+                # === 100 Hz Part ===
+                # update state information with 100 Hz (except for rpy_dot)
+                # apply noise to perfect simulation state:
+                xyz, vel, rpy, omega, acc = self.sensor_noise.add_noise(
+                    pos=self.drone.xyz,
+                    vel=self.drone.xyz_dot,
+                    rot=self.drone.rpy,
+                    omega=self.drone.rpy_dot,
+                    acc=self.drone.xyz_acc,
+                    dt=1/self.SIM_FREQ
+                )
+                quat = np.asarray(self.bc.getQuaternionFromEuler(rpy))
+                self.state = np.concatenate([xyz, quat, vel, acc, omega, 
+                    self.drone.last_action])
+            else:
+                # === 200 Hz Part ===
+                # This part is run with 200Hz, re-use Kalman Filter values:
+                xyz, quat, vel, acc = self.state[0:3], self.state[3:7], self.state[7:10], \
+                    self.state[10:13]
+                # read Gyro data with 500 Hz and add noise:
+                omega = self.sensor_noise.add_noise_to_omega(
+                    omega=self.drone.rpy_dot, dt=1/self.SIM_FREQ)
+
+            # apply low-pass filtering to gyro (happens with 100Hz):
+            omega = self.gyro_lpf.apply(omega)
+            obs = np.concatenate([
+                xyz.tolist()  * obs_mask['xyz'], 
+                quat.tolist() * obs_mask['quaternion'], 
+                vel.tolist()  * obs_mask['xyz_dot'], 
+                acc.tolist()  * obs_mask['xyz_acc'], 
+                omega.tolist()* obs_mask['rpy_dot']
+            ])
+        else:
+            # no observation noise is applied
+            xyz = self.drone.xyz
+            obs = self.drone.get_state(**obs_mask)
+
+        if target_pos is None:
+            return obs
+        else:
+            return np.concatenate([obs, target_pos-xyz])
 
     @abc.abstractmethod
     def compute_potential(self) -> float:
