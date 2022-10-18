@@ -329,6 +329,7 @@ class DroneBaseEnv(gym.Env, abc.ABC):
         # ===> New Code
         obs_mask = {
             'xyz':        self.observation_model in ['state'],
+            'z':          self.observation_model in ['sensor'],
             'quaternion': self.observation_model in ['state'],
             'xyz_dot':    self.observation_model in ['state'],
             'xyz_acc':    self.observation_model in ['sensor'],
@@ -364,6 +365,7 @@ class DroneBaseEnv(gym.Env, abc.ABC):
             omega = self.gyro_lpf.apply(omega)
             obs = np.concatenate([
                 xyz.tolist()  * obs_mask['xyz'], 
+                [xyz[2]]      * obs_mask['z'],
                 quat.tolist() * obs_mask['quaternion'], 
                 vel.tolist()  * obs_mask['xyz_dot'], 
                 acc.tolist()  * obs_mask['xyz_acc'], 

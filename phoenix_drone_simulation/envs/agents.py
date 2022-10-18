@@ -344,6 +344,7 @@ class CrazyFlieAgent(AgentBase):
 
     def get_state(self,
                   xyz=True,
+                  z=False,
                   quaternion=True,
                   xyz_dot=True,
                   xyz_acc=True,
@@ -351,6 +352,7 @@ class CrazyFlieAgent(AgentBase):
                   last_action=True) -> np.ndarray:
         state = np.concatenate([
             self.xyz.tolist()*xyz,
+            [self.xyz[2]]*z,
             self.quaternion.tolist()*quaternion,
             self.xyz_dot.tolist()*xyz_dot,
             self.xyz_acc.tolist()*xyz_acc,

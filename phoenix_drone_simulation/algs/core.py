@@ -86,8 +86,7 @@ class ActorCritic(nn.Module):
                  ac_kwargs,
                  critic_type = 'forward',
                  use_standardized_obs = True,
-                 use_scaled_rewards = False,
-                 
+                 use_scaled_rewards = False,                 
                  weight_initialization='kaiming_uniform'
                  ):
         super().__init__()
