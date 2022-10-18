@@ -39,7 +39,7 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             entropy_coef: float = 0.01,
             gamma: float = 0.99,
             lam: float = 0.95,  # GAE scalar
-            max_ep_len: int = 100,
+            max_ep_len: int = 1000,
             max_grad_norm: float = 0.5,
             num_mini_batches: int = 16,  # used for value network training
             optimizer: str = 'Adam',  # policy optimizer
@@ -59,7 +59,7 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             # use_standardized_obs < 0      : No standardization
             # 0 <= use_standardized_obs < 1 : Standardize (but stop running mean / std)
             # 1 <= use_standardized_obs     : Standardize
-            use_standardized_obs: float = 1.0,
+            use_standardized_obs: float = 0.25,
             verbose: bool = True,
             seq_len: int = 32,      # Splits path into smaller sequences
             seq_overlap: int = 16,  # Sequences overlap e.g. 16 timesteps
