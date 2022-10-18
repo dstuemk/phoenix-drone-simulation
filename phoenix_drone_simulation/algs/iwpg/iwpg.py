@@ -291,7 +291,7 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
         self.best_ep_ret = ep_ret_max
         if ep_ret_mean == ep_ret_max:
             # Save overall best model (was trained in pervious epoch!)
-            self.logger.info(f"Save new best model from epoch {epoch} ({ep_ret_max})")
+            self.logger.info(f"Save new best model from epoch {epoch + 1} ({ep_ret_max})")
             self.logger.save_state(state_dict={}, itr=None)
 
     def log(self, epoch: int) -> None:
