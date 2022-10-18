@@ -10,7 +10,7 @@ def defaults():
         ac_kwargs={
             'pi': {
                 'activation': 'identity', 
-                'hidden_sizes': [18, 18],
+                'hidden_sizes': [20, 20],
                 'layer': 'GRU'
             }, 
             'val': {

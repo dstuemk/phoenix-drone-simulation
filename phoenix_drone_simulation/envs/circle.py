@@ -43,7 +43,7 @@ class DroneCircleBaseEnv(DroneBaseEnv):
         self.z_lim = 1.20
 
         # === Reference trajectory
-        self.episode_length = 500
+        #self.episode_length = 500
         self.circle_time = 3  # [s]
         circle_radius = 0.25  # [m]
         self.num_ref_points = N = self.circle_time * observation_frequency  # [1]

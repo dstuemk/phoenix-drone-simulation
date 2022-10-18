@@ -57,7 +57,7 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             use_reward_scaling: bool = True,
             use_standardized_advantages: bool = False,
             # use_standardized_obs < 0      : No standardization
-            # 0 <= use_standardized_obs < 1 : Standardize (but stop updating mean / std)
+            # 0 <= use_standardized_obs < 1 : Standardize (but stop running mean / std)
             # 1 <= use_standardized_obs     : Standardize
             use_standardized_obs: float = 1.0,
             verbose: bool = True,
