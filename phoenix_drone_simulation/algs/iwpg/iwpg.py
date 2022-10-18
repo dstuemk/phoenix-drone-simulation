@@ -61,8 +61,8 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             # 1 <= use_standardized_obs     : Standardize
             use_standardized_obs: float = 0.25,
             verbose: bool = True,
-            seq_len: int = 32,      # Splits path into smaller sequences
-            seq_overlap: int = 16,  # Sequences overlap e.g. 16 timesteps
+            seq_len: int = 128,      # Splits path into smaller sequences
+            seq_overlap: int = 64,   # Sequences overlap e.g. 16 timesteps
             vf_lr: float = 1e-3,
             weight_initialization: str = 'kaiming_uniform',
             save_freq: int = 10,
