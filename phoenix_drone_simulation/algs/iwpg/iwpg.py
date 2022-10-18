@@ -39,7 +39,7 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             entropy_coef: float = 0.01,
             gamma: float = 0.99,
             lam: float = 0.95,  # GAE scalar
-            max_ep_len: int = 1000,
+            max_ep_len: int = 100,
             max_grad_norm: float = 0.5,
             num_mini_batches: int = 16,  # used for value network training
             optimizer: str = 'Adam',  # policy optimizer

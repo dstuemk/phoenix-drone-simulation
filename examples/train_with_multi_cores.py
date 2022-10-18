@@ -54,7 +54,7 @@ def main():
     model.compile(num_cores=USE_CORES)
 
     # 2) Train model - it takes typically at least 100 epochs for training
-    model.fit(epochs=100)
+    model.fit(epochs=250)
 
     # 3) Benchmark the final policy and save results into `returns.csv`
     model.eval()
