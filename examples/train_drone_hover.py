@@ -39,13 +39,13 @@ def main():
     model.compile()
 
     # 2) Train model - it takes typically at least 100 epochs for training
-    model.fit(epochs=25)
+    model.fit(epochs=100)
 
     # 3) Benchmark the final policy and save results into `returns.csv`
     model.eval()
 
     # 4) visualize trained PPO model
-    env = gym.make(env_id)
+    env = model.env
     env.render()
     # Important note:   PyBullet necessitates to call env.render() before
     #  env.reset() to display the GUI!
