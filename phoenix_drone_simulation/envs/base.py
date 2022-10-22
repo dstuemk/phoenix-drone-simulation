@@ -42,6 +42,7 @@ class DroneBaseEnv(gym.Env, abc.ABC):
             observation_history_size: int = 1,
             observation_noise=0.0,  # default: no noise added to obs
             observation_model='state',
+            observe_position=True,  # If false: Do not observe xyz-position
             sim_freq: int = 200
     ):
         """
@@ -103,6 +104,7 @@ class DroneBaseEnv(gym.Env, abc.ABC):
         # === Setup sensor and observation settings
         assert observation_model in ['sensor', 'state']
         self.observation_model = observation_model
+        self.observe_position = observe_position
         self.observation_frequency = observation_frequency
         self.obs_rate = int(sim_freq // observation_frequency)
         self.gyro_lpf = LowPassFilter(gain=1., time_constant=2/sim_freq,
@@ -328,7 +330,7 @@ class DroneBaseEnv(gym.Env, abc.ABC):
 
         # ===> New Code
         obs_mask = {
-            'xyz':        self.observation_model in ['state'],
+            'xyz':        self.observation_model in ['state'] and self.observe_position,
             'z':          self.observation_model in ['sensor'],
             'quaternion': self.observation_model in ['state'],
             'xyz_dot':    self.observation_model in ['state'],
