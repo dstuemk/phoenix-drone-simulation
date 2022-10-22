@@ -22,6 +22,7 @@ env_specific_kwargs = {
         'save_freq': 25,
         'observe_position': False,
         'observation_history_size': 1, 
+        'use_standardized_obs': 1.0,
     },
 }
 
