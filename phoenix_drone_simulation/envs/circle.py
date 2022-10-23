@@ -62,19 +62,38 @@ class DroneCircleBaseEnv(DroneBaseEnv):
         init_rpy_dot = np.zeros(3)
 
         super(DroneCircleBaseEnv, self).__init__(
-            control_mode=control_mode,
-            drone_model=drone_model,
-            init_xyz=init_xyz,
-            init_rpy=init_rpy,
-            init_xyz_dot=init_xyz_dot,
-            init_rpy_dot=init_rpy_dot,
-            physics=physics,
-            observation_noise=observation_noise,
-            domain_randomization=domain_randomization,
-            sim_freq=sim_freq,
-            aggregate_phy_steps=aggregate_phy_steps,
-            observation_frequency=observation_frequency,
-            **kwargs
+            **{
+                **dict(
+                    control_mode=control_mode,
+                    drone_model=drone_model,
+                    physics=physics,
+                    observation_noise=observation_noise,
+                    domain_randomization=domain_randomization,
+                    sim_freq=sim_freq,
+                    aggregate_phy_steps=aggregate_phy_steps,
+                    observation_frequency=observation_frequency,
+                ),
+                **kwargs,
+                **dict(
+                    init_xyz=init_xyz,
+                    init_rpy=init_rpy,
+                    init_xyz_dot=init_xyz_dot,
+                    init_rpy_dot=init_rpy_dot,
+                )
+            },
+            #control_mode=control_mode,
+            #drone_model=drone_model,
+            #init_xyz=init_xyz,
+            #init_rpy=init_rpy,
+            #init_xyz_dot=init_xyz_dot,
+            #init_rpy_dot=init_rpy_dot,
+            #physics=physics,
+            #observation_noise=observation_noise,
+            #domain_randomization=domain_randomization,
+            #sim_freq=sim_freq,
+            #aggregate_phy_steps=aggregate_phy_steps,
+            #observation_frequency=observation_frequency,
+            #**kwargs
         )
 
     def _setup_task_specifics(self):
@@ -257,11 +276,20 @@ class DroneCircleBulletEnv(DroneCircleBaseEnv):
                  control_mode: str = 'PWM',
                  **kwargs):
         super(DroneCircleBulletEnv, self).__init__(
-            aggregate_phy_steps=aggregate_phy_steps,
-            control_mode=control_mode,
-            drone_model='cf21x_bullet',
-            physics='PyBulletPhysics',
-            observation_frequency=100,  # use 100Hz PWM control loop
-            sim_freq=200,  # but step physics with 200Hz
-            **kwargs
+            **{
+                'aggregate_phy_steps': aggregate_phy_steps,
+                'control_mode': control_mode,
+                'drone_model': 'cf21x_bullet',
+                'physics': 'PyBulletPhysics',
+                'observation_frequency': 100,
+                'sim_freq': 200,
+                **kwargs,
+            },
+            #aggregate_phy_steps=aggregate_phy_steps,
+            #control_mode=control_mode,
+            #drone_model='cf21x_bullet',
+            #physics='PyBulletPhysics',
+            #observation_frequency=100,  # use 100Hz PWM control loop
+            #sim_freq=200,  # but step physics with 200Hz
+            #**kwargs
         )

@@ -452,13 +452,17 @@ def convert_actor_critic_to_json(
 
 
 def load_actor_critic_and_env_from_disk(
-        file_name_path: str
+        file_name_path: str,
+        modify_env_kwargs = lambda x:x
 ) -> tuple:
     """Loads ac module from disk. (@Sven).
 
     Parameters
     ----------
     file_name_path
+
+    modify_env_kwargs:
+        Can be used to change environments initial parameters
 
     Returns
     -------
@@ -469,33 +473,27 @@ def load_actor_critic_and_env_from_disk(
     conf = get_file_contents(config_file_path)
     print('Loaded config file:')
     print(conf)
-    env_id = conf.get('env_id')
-    env = gym.make(env_id)
-    alg = conf.get('alg', 'ppo')
 
-    if alg == 'sac':
-        from phoenix_drone_simulation.algs.sac.sac import MLPActorCritic
-        ac = MLPActorCritic(
-            observation_space=env.observation_space,
-            action_space=env.action_space,
-            ac_kwargs=conf['ac_kwargs']
-        )
-    elif alg == "ddpg":
-        from phoenix_drone_simulation.algs.ddpg.ddpg import MLPActorCritic
-        ac = MLPActorCritic(
-            observation_space=env.observation_space,
-            action_space=env.action_space,
-            ac_kwargs=conf['ac_kwargs']
-        )
-    else:
-        ac = core.ActorCritic(
-            actor_type=conf['actor'],
-            observation_space=env.observation_space,
-            action_space=env.action_space,
-            use_standardized_obs=conf['use_standardized_obs'],
-            use_scaled_rewards=conf['use_reward_scaling'],
-            ac_kwargs=conf['ac_kwargs']
-        )
+    env_id = conf.get('env_id')
+    env_config_file_path = os.path.join(file_name_path, 'env_config.json')
+    env_conf = get_file_contents(env_config_file_path)
+    env_kwargs = env_conf['input_parameters']
+    env_kwargs.pop('self')
+    env_kwargs = modify_env_kwargs(env_kwargs)
+    env = gym.make(
+        env_id, 
+        **env_kwargs 
+    )
+
+    ac = core.ActorCritic(
+        actor_type=conf['actor'],
+        critic_type=conf['critic'],
+        observation_space=env.observation_space,
+        action_space=env.action_space,
+        use_standardized_obs=conf['use_standardized_obs'],
+        use_scaled_rewards=conf['use_reward_scaling'],
+        ac_kwargs=conf['ac_kwargs']
+    )
     model_path = os.path.join(file_name_path, 'torch_save', 'model.pt')
     ac.load_state_dict(torch.load(model_path), strict=False)
     print(f'Successfully loaded model from: {model_path}')
