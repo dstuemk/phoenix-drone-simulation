@@ -19,7 +19,7 @@ from phoenix_drone_simulation.utils.mpi_tools import mpi_fork
 
 
 def main():
-    USE_CORES = 4
+    USE_CORES = 64
 
     # Let us count the number of physical cores on this machine...
     # Exclude hyper-threading and round cores to anything in: [2, 4, 8, 16, ...]
@@ -47,7 +47,24 @@ def main():
         env_id=env_id,
         log_dir=default_log_dir,
         init_seed=random_seed,
-        use_mpi=True  # set this parameter True to use all available CPU cores
+        use_mpi=True,  # set this parameter True to use all available CPU cores
+        algorithm_kwargs={
+                'pi_lr': 1e-3,
+                'vf_lr': 3e-3,
+                'steps_per_epoch': 64000,
+                'latency':      0.02,
+                'observation_noise': 1,
+                'motor_time_constant': 0.120,
+                'motor_thrust_noise': 0.05,
+                'observation_model': 'state',
+                'domain_randomization': 0.1,
+                'observe_position': False,
+                'observation_history_size': 1,
+                'use_standardized_obs': 1/5,
+                'max_ep_len': 500,
+                'seq_len': 100,
+                'seq_overlap': 50,
+        }
     )
 
     # compile model and define the number of CPU cores to use for training
