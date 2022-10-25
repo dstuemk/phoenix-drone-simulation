@@ -11,7 +11,7 @@ env_specific_kwargs = {
     ENV: {
         'pi_lr': 1e-3,
         'vf_lr': 3e-3,
-        'epochs': 250,
+        'epochs': 400,
         'steps_per_epoch': 64000,
         'latency':	0.02,              # From Zero-shot paper
         'observation_noise': 1,        # sensor noise enabled when > 0
@@ -24,7 +24,7 @@ env_specific_kwargs = {
         'save_freq': 25,
         'observe_position': True,
         'observation_history_size': 1, 
-        'use_standardized_obs': 1/5,
+        'use_standardized_obs': 1/4,
     },
 }
 
@@ -104,5 +104,5 @@ def train(args,parameter_grid_dict):
 if __name__ == '__main__':
     args, unparsed_args = get_training_command_line_args(
         alg=ALG, env=ENV)
-    train(args,forward_grid_dict)
     train(args,recurrent_grid_dict)
+    train(args,forward_grid_dict)
