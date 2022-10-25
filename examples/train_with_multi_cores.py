@@ -58,12 +58,12 @@ def main():
                 'motor_thrust_noise': 0.05,
                 'observation_model': 'state',
                 'domain_randomization': 0.1,
-                'observe_position': False,
+                'observe_position': True,
                 'observation_history_size': 1,
                 'use_standardized_obs': 1/5,
-                'max_ep_len': 500,
-                'seq_len': 100,
-                'seq_overlap': 50,
+                'max_ep_len': 200,
+                'seq_len': 200,
+                'seq_overlap': 0,
         }
     )
 

@@ -18,9 +18,9 @@ env_specific_kwargs = {
         'motor_time_constant': 0.120,  # [s]
         'motor_thrust_noise': 0.05,    # noise in % added to thrusts
         'penalty_spin': 0.001,
-        'max_ep_len': 500,
-        'seq_len': 100,
-        'seq_overlap': 50,
+        'max_ep_len': 200,
+        'seq_len': 200,
+        'seq_overlap': 0,
         'save_freq': 25,
         'observe_position': True,
         'observation_history_size': 1, 
