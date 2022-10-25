@@ -9,22 +9,20 @@ NUM_RUNS = 5
 
 env_specific_kwargs = {
     ENV: {
-        'pi_lr': 1e-3,
-        'vf_lr': 3e-3,
-        'epochs': 400,
-        'steps_per_epoch': 64000,
+        'epochs': 250,
+        'steps_per_epoch': 32000,
         'latency':	0.02,              # From Zero-shot paper
         'observation_noise': 1,        # sensor noise enabled when > 0
         'motor_time_constant': 0.120,  # [s]
         'motor_thrust_noise': 0.05,    # noise in % added to thrusts
         'penalty_spin': 0.001,
         'max_ep_len': 200,
-        'seq_len': 200,
-        'seq_overlap': 0,
+        'seq_len': 100,
+        'seq_overlap': 50,
         'save_freq': 25,
         'observe_position': True,
         'observation_history_size': 1, 
-        'use_standardized_obs': 1/4,
+        'use_standardized_obs': 1/5,
     },
 }
 
