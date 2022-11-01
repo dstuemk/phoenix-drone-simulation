@@ -9,7 +9,7 @@ NUM_RUNS = 5
 
 env_specific_kwargs = {
     ENV: {
-        'epochs': 400,
+        'epochs': 250,
         'steps_per_epoch': 64000,
         'latency':      0.02,              # From Zero-shot paper
         'observation_noise': 1,        # sensor noise enabled when > 0
@@ -27,7 +27,7 @@ env_specific_kwargs = {
 }
 
 common_grid_dict = {
-    'domain_randomization': [0.1, 0.0],
+    'domain_randomization': [0.1],
     'observation_model': ['sensor', 'state'],
 }
 
