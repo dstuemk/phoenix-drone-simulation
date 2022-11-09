@@ -15,7 +15,7 @@ imgtypes = ['svg', 'png']
 
 def column_name_mapper(name:str):
     return {
-        'EpRet/Mean': 'mean(R)',
+        'EpRet/Mean': 'mean(return)',
         'domain_randomization': 'DR',
         'observation_history_size': 'H',
         'observation_model': 'obs_model'
