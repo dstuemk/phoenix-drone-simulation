@@ -7,6 +7,7 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
+import tensorflow as tf
 
 # local imports
 import phoenix_drone_simulation
@@ -19,69 +20,116 @@ def count_vars(module: nn.Module):
     r"""Count number of variables in Neural Network."""
     return sum([np.prod(p.shape) for p in module.parameters()])
 
+#########################################################################
+#                                                                       #
+#         Convert to keras h5 format                                    #
+#                                                                       #
+#########################################################################
+
+def convert_kernel_gru(kernel):
+    kernel_z, kernel_r, kernel_h = np.vsplit(kernel, 3)
+    return np.concatenate((kernel_r.T, kernel_z.T, kernel_h.T), axis=1)
+
+def convert_bias_gru(bias):
+    bias = bias.reshape(2, 3, -1) 
+    return bias[:, [1, 0, 2], :].reshape((2, -1))
+
+def copy_GRU(lay_tf, lay_torch):
+    lay_torch = list(lay_torch.parameters())
+    kernel_input = convert_kernel_gru(lay_torch[0].detach())
+    kernel_h = convert_kernel_gru(lay_torch[1].detach())
+    bias = convert_bias_gru(np.stack((
+        lay_torch[2].detach(), 
+        lay_torch[3].detach()), axis=0))
+    lay_tf.set_weights([
+        kernel_input,
+        kernel_h,
+        bias
+    ])
+
+def copy_LSTM(lay_tf, lay_torch):
+    lay_torch = list(lay_torch.parameters())
+    lay_tf.set_weights([
+        lay_torch[0].detach().numpy().transpose(),
+        lay_torch[1].detach().numpy().transpose(),
+        (lay_torch[2] + lay_torch[3]).detach().numpy()
+    ])
+
+def copy_Dense(lay_tf, lay_torch):
+    lay_torch = list(lay_torch.parameters())
+    lay_tf.set_weights([
+        lay_torch[0].detach().numpy().transpose(),
+        lay_torch[1].detach().numpy()
+    ])
+
 def convert_actor_critic_to_h5(actor_critic: torch.nn.Module,
                                file_path: str,
                                file_name: str = 'model.h5'
                                ):
     net_torch = actor_critic.pi.net
-    net_tf    = actor_critic.pi.net_tf
-
-    net_tf.layers[1].set_weights([
-        # Normalization layer
+    model_tf = None
+    get_layer = lambda tensor: model_tf.get_layer(
+        tensor.name.split('/')[0])
+    net_tf = []
+    init_fns = []
+    # Input Layer
+    net_tf.append( tf.keras.layers.Input(
+        shape=(1,actor_critic.obs_oms.shape[0]),
+        batch_size=1, name='input') )
+    # Normalization Layer
+    net_tf.append( tf.keras.layers.BatchNormalization(
+        center=False, scale=False, epsilon=1e-10, name='batch_normalization')(net_tf[-1]) )
+    init_fns.append( lambda lay=net_tf[-1]: get_layer(lay).set_weights([
         actor_critic.obs_oms.mean.numpy(),
         actor_critic.obs_oms.std.numpy()**2
-    ])
-
-    tf_layers = net_tf.layers
+    ]))
+    # Hidden Layers
+    hidden_ctr = 1
     for module in list(net_torch.modules()):
+        # Cells
         if isinstance(module, nn.GRU):
-            gru_idx = np.where([isinstance(el, tf.keras.layers.GRU) for el in tf_layers])[0][0]
-            lay_torch = list(module.parameters())
-            kernel_input = convert_kernel_gru(lay_torch[0].detach())
-            kernel_h = convert_kernel_gru(lay_torch[1].detach())
-            bias = convert_bias_gru(np.stack((
-                lay_torch[2].detach(), 
-                lay_torch[3].detach()), axis=0))
-            lay_tf = tf_layers[gru_idx]
-            lay_tf.set_weights([
-                kernel_input,
-                kernel_h,
-                bias
-            ])
-            del tf_layers[gru_idx]
+            net_tf.append( tf.keras.layers.GRU(
+                units=module.hidden_size, stateful=True, return_sequences=True,
+                name=f"layer{hidden_ctr}")(net_tf[-1]) )
+            init_fns.append( lambda lay_tf=net_tf[-1],module=module: copy_GRU(
+                get_layer(lay_tf), module) )
         elif isinstance(module, nn.LSTM):
-            lstm_idx = np.where([isinstance(el, tf.keras.layers.LSTM) for el in tf_layers])[0][0]
-            lay_torch = list(module.parameters())
-            lay_tf = tf_layers[lstm_idx]
-            lay_tf.set_weights([
-                lay_torch[0].detach().numpy().transpose(),
-                lay_torch[1].detach().numpy().transpose(),
-                (lay_torch[2] + lay_torch[3]).detach().numpy()
-            ])
-            del tf_layers[lstm_idx]
+            net_tf.append( tf.keras.layers.LSTM(
+                units=module.hidden_size, stateful=True, return_sequences=True,
+                name=f"layer{hidden_ctr}")(net_tf[-1]) )
+            init_fns.append( lambda lay_tf=net_tf[-1],module=module: copy_LSTM(
+                get_layer(lay_tf), module) )
         elif isinstance(module, nn.Linear):
-            dense_idx = np.where([isinstance(el, tf.keras.layers.Dense) for el in tf_layers])[0][0]
-            lay_torch = list(module.parameters())
-            lay_tf = tf_layers[dense_idx]
-            lay_tf.set_weights([
-                lay_torch[0].detach().numpy().transpose(),
-                lay_torch[1].detach().numpy()
-            ])
-            del tf_layers[dense_idx]
+            net_tf.append( tf.keras.layers.Dense(units=module.out_features,
+                name=f"layer{hidden_ctr}")(net_tf[-1]) )
+            init_fns.append( lambda lay_tf=net_tf[-1],module=module: copy_Dense(
+                get_layer(lay_tf), module) )
+        # Activations
+        if isinstance(module, nn.Identity):
+            pass
+        elif isinstance(module, nn.Tanh):
+            net_tf.append(tf.keras.layers.Activation('tanh')(net_tf[-1]))
+        elif isinstance(module, nn.ReLU):
+            net_tf.append(tf.keras.layers.Activation('relu')(net_tf[-1]))
+        hidden_ctr += 1
+    # Build network
+    model_tf = tf.keras.Model(net_tf[0],net_tf[-1])
+    # Set weights
+    for init_fn in init_fns:
+        init_fn()
 
     # Check if networks behave in the same way
     actor_critic.training = False
     err = []
-    a_pre = None
-    for step_idx in range(64):
+    for _ in range(64):
         x = np.random.rand(*actor_critic.obs_shape).astype("float32")
         a_torch,_,_ = actor_critic.step(torch.from_numpy(x))
-        a_tf = net_tf(x.reshape((1,1,-1)), training=False)
+        a_tf = model_tf(x.reshape((1,1,-1)), training=False)
         err.append((a_torch - a_tf.numpy())**2)
     mse = np.mean(err)
     print(f"Test squared error (avg / max): {mse} / {np.max(err)}")
 
     save_file_name_path = os.path.join(file_path, file_name)
-    net_tf.save(save_file_name_path, save_format='h5')
+    model_tf.save(save_file_name_path, save_format='h5')
     print(f"Saved model to: {save_file_name_path}")
 

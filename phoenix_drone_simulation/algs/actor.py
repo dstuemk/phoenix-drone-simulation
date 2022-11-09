@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 
 from torch.distributions.normal import Normal
-from phoenix_drone_simulation.algs.net import build_cascaded_network, build_forward_network, build_recurrent_network
+from phoenix_drone_simulation.algs.net import build_forward_network, build_recurrent_network
 
 registered_actors = dict()  # global dict that holds pointers to functions 
 
@@ -116,33 +116,8 @@ class RecurrentGaussianActor(Actor):
         super().__init__(obs_dim, act_dim, weight_initialization,final_std=final_std)
         
         layers = [self.obs_dim] + list(hidden_sizes) + [self.act_dim]
-        self.net, self.layers_rnn, self.net_tf = build_recurrent_network(
+        self.net, self.layers_rnn = build_recurrent_network(
             layers,
-            weight_initialization=weight_initialization,
-            layer=layer
-        )
-        
-    @property
-    def is_recurrent(self):
-        return True
-
-@register_actor("cascaded_gaussian")
-class CascadedGaussianActor(Actor):
-    def __init__(
-            self,
-            obs_dim,
-            act_dim,
-            hidden_sizes,
-            activation,
-            weight_initialization,
-            layer='GRU',
-            final_std=0.01):
-        super().__init__(obs_dim, act_dim, weight_initialization,final_std=final_std)
-
-        layers = [self.obs_dim] + list(hidden_sizes) + [self.act_dim]
-        self.net, self.layers_rnn, self.net_tf = build_cascaded_network(
-            layers,
-            activation=activation,
             weight_initialization=weight_initialization,
             layer=layer
         )
@@ -165,7 +140,7 @@ class ForwardGaussianActor(Actor):
         super().__init__(obs_dim, act_dim, weight_initialization,final_std=final_std)
 
         layers = [self.obs_dim] + list(hidden_sizes) + [self.act_dim]
-        self.net, self.net_tf = build_forward_network(
+        self.net = build_forward_network(
             layers,
             activation=activation,
             weight_initialization=weight_initialization

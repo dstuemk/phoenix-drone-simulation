@@ -9,9 +9,12 @@ NUM_RUNS = 5
 
 env_specific_kwargs = {
     ENV: {
-        'epochs': 250,
+        'pi_lr': 1e-3,
+        'vf_lr': 3e-3,
+        'num_mini_batches': 8,
+        'epochs': 300,
         'steps_per_epoch': 64000,
-        'latency':      0.02,              # From Zero-shot paper
+        'latency':      0.02,          # From Zero-shot paper
         'observation_noise': 1,        # sensor noise enabled when > 0
         'motor_time_constant': 0.120,  # [s]
         'motor_thrust_noise': 0.05,    # noise in % added to thrusts
@@ -27,7 +30,7 @@ env_specific_kwargs = {
 }
 
 common_grid_dict = {
-    'domain_randomization': [0.1],
+    'domain_randomization': [0.0, 0.1],
     'observation_model': ['sensor', 'state'],
 }
 
@@ -81,7 +84,6 @@ forward_grid_dict = {
 # ------------------------------------------------------------------------------
 #   Main program
 # ------------------------------------------------------------------------------
-
 
 def train(args,parameter_grid_dict):
     alg_setup = {

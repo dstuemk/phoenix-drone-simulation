@@ -7,7 +7,7 @@ based on:   Spinning Up's Vanilla Policy Gradient
 import torch
 import torch.nn as nn
 
-from phoenix_drone_simulation.algs.net import build_cascaded_network, build_forward_network, build_recurrent_network
+from phoenix_drone_simulation.algs.net import build_forward_network, build_recurrent_network
 
 registered_critics = dict()  # global dict that holds pointers to functions 
 
@@ -55,7 +55,7 @@ class RecurrentCritic(Critic):
     def __init__(self, obs_dim, hidden_sizes, activation, layer='GRU'):
         super().__init__(obs_dim, hidden_sizes, activation)
 
-        self.net, self.layers_rnn, _ = build_recurrent_network(
+        self.net, self.layers_rnn = build_recurrent_network(
             [obs_dim] + list(hidden_sizes) + [1],
             activation=activation, layer=layer
         )
@@ -65,20 +65,20 @@ class RecurrentCritic(Critic):
         return True
 
 
-@register_critic("cascaded")
-class CascadedCritic(Critic):
-
-    def __init__(self, obs_dim, hidden_sizes, activation, layer='GRU'):
-        super().__init__(obs_dim, hidden_sizes, activation)
-        
-        self.net, self.layers_rnn, _ = build_cascaded_network(
-            [obs_dim] + list(hidden_sizes) + [1],
-            activation=activation
-        )
-
-    @property
-    def is_recurrent(self):
-        return True
+#@register_critic("cascaded")
+#class CascadedCritic(Critic):
+#
+#    def __init__(self, obs_dim, hidden_sizes, activation, layer='GRU'):
+#        super().__init__(obs_dim, hidden_sizes, activation)
+#        
+#        self.net, self.layers_rnn, _ = build_cascaded_network(
+#            [obs_dim] + list(hidden_sizes) + [1],
+#            activation=activation
+#        )
+#
+#    @property
+#    def is_recurrent(self):
+#        return True
 
 @register_critic("forward")
 class ForwardCritic(Critic):
@@ -86,7 +86,7 @@ class ForwardCritic(Critic):
     def __init__(self, obs_dim, hidden_sizes, activation, shared=None, layer=None):
         super().__init__(obs_dim, hidden_sizes, activation)
 
-        self.net, _ = build_forward_network(
+        self.net = build_forward_network(
             [obs_dim] + list(hidden_sizes) + [1],
             activation=activation)
 
