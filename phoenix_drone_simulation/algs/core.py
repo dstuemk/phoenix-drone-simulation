@@ -175,6 +175,8 @@ class Buffer:
                  actor_critic: torch.nn.Module,
                  obs_dim: tuple,
                  act_dim: tuple,
+                 param_dim: tuple,
+                 hidden_dim: tuple,
                  size: int,
                  gamma: float,
                  lam: float,
@@ -195,6 +197,8 @@ class Buffer:
         self.act_dim = act_dim
         self.actor_critic = actor_critic
         self.size = size
+        self.param_buf = np.zeros(combined_shape(size, param_dim), dtype=np.float32)
+        self.hidden_buf = np.zeros(combined_shape(size, hidden_dim), dtype=np.float32)
         self.obs_buf = np.zeros(combined_shape(size, obs_dim), dtype=np.float32)
         self.act_buf = np.zeros(combined_shape(size, act_dim), dtype=np.float32)
         self.adv_buf = np.zeros(size, dtype=np.float32)
@@ -238,7 +242,7 @@ class Buffer:
 
         return adv, value_net_targets
 
-    def store(self, obs, act, rew, val, logp):
+    def store(self, obs, act, rew, val, logp, param, hidden):
         """
         Append one timestep of agent-environment interaction to the buffer.
 
@@ -252,6 +256,8 @@ class Buffer:
         self.rew_buf[self.ptr] = rew
         self.val_buf[self.ptr] = val
         self.logp_buf[self.ptr] = logp
+        self.param_buf[self.ptr] = param
+        self.hidden_buf[self.ptr] = hidden
         self.ptr += 1
 
     def finish_path(self, last_val=0):
@@ -312,6 +318,7 @@ class Buffer:
             obs=self.obs_buf, act=self.act_buf, target_v=self.target_val_buf,
             adv=self.adv_buf, log_p=self.logp_buf,
             discounted_ret=self.discounted_ret_buf,
+            param=self.param_buf, hidden=self.hidden_buf,
             path_slice=[[s.start, s.stop] for s in self.path_slice_buf]
         )
 

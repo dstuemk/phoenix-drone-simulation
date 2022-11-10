@@ -149,6 +149,13 @@ class DroneBaseEnv(gym.Env, abc.ABC):
         a_lim = np.ones((act_dim,), dtype=np.float32)
         self.observation_space = gym.spaces.Box(-o_lim, o_lim, dtype=np.float32)
         self.action_space = gym.spaces.Box(-a_lim, a_lim, dtype=np.float32)
+        
+        # Space for parameters and hidden states
+        info = self.compute_info()
+        p_lim = np.ones(info['dynamics'].shape, dtype=np.float32)
+        h_lim = 1000 * np.ones(info['hidden_state'].shape, dtype=np.float32)
+        self.parameter_space = gym.spaces.Box(-p_lim, p_lim, dtype=np.float32)
+        self.hidden_state_space = gym.spaces.Box(-h_lim, h_lim, dtype=np.float32)
 
         # stepping information
         self.old_potential = self.compute_potential()
@@ -349,9 +356,9 @@ class DroneBaseEnv(gym.Env, abc.ABC):
             [(self.drone.force_torque_factor_1 - self.drone.FORCE_TORQUE_FACTOR_1) \
                 / self.drone.FORCE_TORQUE_FACTOR_1 / dr], 
             (self.drone.T - self.drone.MOTOR_TIME_CONSTANT) \
-                / self.drone.MOTOR_TIME_CONSTANT / dr,
+                / self.drone.MOTOR_TIME_CONSTANT / dr * np.ones(4),
             (self.drone.thrust_to_weight_ratio - self.drone.THRUST2WEIGHT_RATIO) \
-                / self.drone.THRUST2WEIGHT_RATIO / dr
+                / self.drone.THRUST2WEIGHT_RATIO / dr * np.ones(4)
         ])
         return {
             'hidden_state': hidden_state,

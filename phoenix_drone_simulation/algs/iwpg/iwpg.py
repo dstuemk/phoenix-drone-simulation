@@ -13,6 +13,7 @@ import gym
 import time
 import random
 import torch
+import torch.nn as nn
 import os
 from copy import deepcopy
 
@@ -63,6 +64,8 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             verbose: bool = True,
             seq_len: int = 128,      # Splits path into smaller sequences
             seq_overlap: int = 64,   # Sequences overlap e.g. 16 timesteps
+            c_sid: float = 1e-2,
+            c_est: float = 1.0,
             vf_lr: float = 1e-3,
             weight_initialization: str = 'kaiming_uniform',
             save_freq: int = 10,
@@ -117,6 +120,8 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
         self.vf_lr = vf_lr
         self.seq_len = seq_len
         self.seq_overlap = seq_overlap
+        self.c_sid = c_sid
+        self.c_est = c_est
         
 
         # ==== Call assertions....
@@ -135,6 +140,9 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
         torch.manual_seed(seed)
         np.random.seed(seed)
         self.env.seed(seed=seed)
+
+        # Decoder network
+        self.decoder_net = None
 
         # === Setup actor-critic module
         self.ac = core.ActorCritic(
@@ -156,6 +164,8 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             actor_critic=self.ac,
             obs_dim=self.env.observation_space.shape,
             act_dim=self.env.action_space.shape,
+            param_dim=self.env.parameter_space.shape,
+            hidden_dim=self.env.hidden_state_space.shape,
             size=self.local_steps_per_epoch,
             gamma=gamma,
             lam=lam,
@@ -309,6 +319,7 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
         self.logger.log_tabular('Values/V', min_and_max=True)
         self.logger.log_tabular('Values/Adv', min_and_max=True)
         self.logger.log_tabular('Loss/Pi', std=False)
+        self.logger.log_tabular('Loss/Dec', std=False)
         self.logger.log_tabular('Loss/Value')
         self.logger.log_tabular('Loss/DeltaPi')
         self.logger.log_tabular('Loss/DeltaValue')
@@ -418,7 +429,8 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             # Notes:
             #   - raw observations are stored to buffer (later transformed)
             #   - reward scaling is performed in buf
-            self.buf.store(obs=o, act=a, rew=r, val=v, logp=logp)
+            self.buf.store(obs=o, act=a, rew=r, val=v, logp=logp,
+                param=info['dynamics'], hidden=info['hidden_state'])
             self.logger.store(**{'Values/V': v})
             o = next_o
 
@@ -474,6 +486,27 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
         """
         self.ac.pi.reset_states()
         self.ac.v.reset_states()
+    
+    def compute_decoder_loss(self, data):
+        if not self.ac.pi.is_recurrent:
+            return 0
+        
+        x = torch.concat([lay.y for lay in self.ac.pi.layers_rnn],-1)
+        y = torch.concat([
+            data['param']*self.c_sid, data['hidden']*self.c_est], -1)
+
+        if self.decoder_net is None:
+            layers = [
+                nn.Linear(x.shape[-1], 64),
+                nn.ReLU(),
+                nn.Linear(64, 64),
+                nn.ReLU(),
+                nn.Linear(64, y.shape[-1])
+            ]
+            for idx in range(0,len(layers),2):
+                nn.init.kaiming_uniform_(layers[idx].weight, a=np.sqrt(5))
+            self.decoder_net = nn.Sequential(*layers)
+        return (self.decoder_net(x) - y).abs().mean()
 
     def update_policy_net(self, data) -> None:
         # initial RNN states
@@ -483,6 +516,8 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
         self.loss_pi_before = pi_l_old.item()
         # get prob. distribution before updates: used to measure KL distance
         p_dist = self.ac.pi.dist(data['obs'])
+        # Get decoder loss before update
+        self.loss_dec_before = self.compute_decoder_loss(data)
 
         # Train policy with multiple steps of gradient descent
         for i in range(self.train_pi_iterations):
@@ -490,7 +525,9 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             self.prepare_memory()
             self.pi_optimizer.zero_grad()
             loss_pi, pi_info = self.compute_loss_pi(data=data)
-            loss_pi.backward()
+            loss_dec = self.compute_decoder_loss(data=data)
+            loss_total = loss_pi + loss_dec
+            loss_total.backward()
             if self.use_max_grad_norm:  # apply L2 norm
                 torch.nn.utils.clip_grad_norm_(
                     self.ac.pi.parameters(),
@@ -509,6 +546,7 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
 
         # track when policy iteration is stopped; Log changes from update
         self.logger.store(**{
+            'Loss/Dec': self.loss_dec_before,
             'Loss/Pi': self.loss_pi_before,
             'Loss/DeltaPi': loss_pi.item() - self.loss_pi_before,
             'Misc/StopIter': i + 1,

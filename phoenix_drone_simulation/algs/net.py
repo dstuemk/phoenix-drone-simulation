@@ -67,8 +67,8 @@ class StatefulRNN(nn.Module):
     self.state = self._detach_state(state)
     y_size = list(inp_size)
     y_size[-1] = y.size()[-1]
-    y = y.view(y_size)
-    return y
+    self.y = y.view(y_size)
+    return self.y
 
   def _detach_state(self, state):
     # Detach hidden state from gradient computation and replace nan's with 0
