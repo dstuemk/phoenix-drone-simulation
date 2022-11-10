@@ -101,31 +101,7 @@ class DroneHoverBaseEnv(DroneBaseEnv):
         return done
 
     def compute_info(self) -> dict:
-        state = self.drone.get_state()
-        c = 0.
-        info = {}
-        # xyz bounds
-        x, y, z = state[:3]
-        if np.abs(x) > self.x_lim or np.abs(y) > self.y_lim or z > self.z_lim:
-            c = 1.
-            info['xyz_limit'] = state[:3]
-        # roll pitch bounds
-        rpy = self.drone.rpy
-        if (np.abs(rpy[:2]) > self.roll_pitch_limit).any():
-            c = 1.
-            info['rpy'] = rpy
-        # linear velocities
-        if (np.abs(state[10:13]) > self.vel_limit).any():
-            c = 1.
-            info['xzy_dot'] = state[10:13]
-        # angular velocities
-        if (np.abs(state[13:16]) > self.rpy_dot_limit).any():
-            c = 1.
-            info['rpy_dot'] = state[13:16] * 180 / np.pi
-        # update ron visuals when costs are received
-        # self.violates_constraints(True if c > 0 else False)
-
-        info['cost'] = c
+        info = super().compute_info()
         return info
 
     def compute_observation(self) -> np.ndarray:

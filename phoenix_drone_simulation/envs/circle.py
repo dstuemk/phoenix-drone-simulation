@@ -141,7 +141,7 @@ class DroneCircleBaseEnv(DroneBaseEnv):
     def compute_info(self) -> dict:
         # state = self.drone.get_state()
         c = 0.
-        info = {'cost': c}
+        info = {'cost': c, **super().compute_info()}
         return info
 
     def compute_observation(self) -> np.ndarray:
