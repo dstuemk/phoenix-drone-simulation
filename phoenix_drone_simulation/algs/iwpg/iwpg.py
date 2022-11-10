@@ -517,7 +517,7 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
         # get prob. distribution before updates: used to measure KL distance
         p_dist = self.ac.pi.dist(data['obs'])
         # Get decoder loss before update
-        self.loss_dec_before = self.compute_decoder_loss(data)
+        self.loss_dec_before = self.compute_decoder_loss(data).item()
 
         # Train policy with multiple steps of gradient descent
         for i in range(self.train_pi_iterations):
