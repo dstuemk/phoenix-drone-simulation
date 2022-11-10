@@ -7,6 +7,7 @@ based on:   Spinning Up's Vanilla Policy Gradient
 import numpy as np
 import scipy.signal
 from gym.spaces import Box, Discrete
+from collections import deque
 import abc
 
 import torch
@@ -202,7 +203,7 @@ class Buffer:
         self.target_val_buf = np.zeros(size, dtype=np.float32)
         self.val_buf = np.zeros(size, dtype=np.float32)
         self.logp_buf = np.zeros(size, dtype=np.float32)
-        self.path_slice_buf = [] 
+        self.path_slice_buf = deque(maxlen=size) 
         self.gamma = gamma
         self.lam = lam
         self.adv_estimation_method = adv_estimation_method
@@ -314,7 +315,7 @@ class Buffer:
             path_slice=[[s.start, s.stop] for s in self.path_slice_buf]
         )
 
-        self.path_slice_buf = []
+        self.path_slice_buf.clear()
 
         return {k: torch.as_tensor(v, dtype=torch.float32) for k, v in
                 data.items()}

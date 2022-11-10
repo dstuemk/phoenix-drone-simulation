@@ -101,7 +101,7 @@ class DroneTakeOffBaseEnv(DroneBaseEnv):
 
     def compute_info(self) -> dict:
         c = 0.
-        info = {'cost': c}
+        info = {'cost': c, **super().compute_info()}
         return info
 
     def compute_observation(self) -> np.ndarray:

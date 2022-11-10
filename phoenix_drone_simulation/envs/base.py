@@ -318,25 +318,52 @@ class DroneBaseEnv(gym.Env, abc.ABC):
         self.action_history.append(action)
 
         return history
+    
+    def get_observation_mask(self) -> dict:
+        obs_mask = {
+            'x':          self.observation_model in ['state'] and self.observe_position,
+            'y':          self.observation_model in ['state'] and self.observe_position,
+            'z':          self.observation_model in ['sensor','state'] and self.observe_position,
+            'quaternion': self.observation_model in ['state'],
+            'xyz_dot':    self.observation_model in ['state'],
+            'xyz_acc':    self.observation_model in ['sensor'],
+            'rpy_dot':    self.observation_model in ['sensor','state'],
+        }
+        return obs_mask
 
     @abc.abstractmethod
     def compute_info(self) -> dict:
         """Implemented by child classes."""
-        raise NotImplementedError
+        obs_mask = self.get_observation_mask()
+        obs_mask_i = { k: not v for k,v in obs_mask.items() }
+        hidden_state = self.drone.get_state(**obs_mask_i, last_action=False)
+        dr = self.domain_randomization
+        dr = 1.0 if dr <= 0.0 else dr
+        dynamics = np.concatenate([
+            [(self.time_step - self.TIME_STEP) / self.TIME_STEP / dr],
+            [(self.drone.m - self.drone.M) / self.drone.M / dr],
+            (np.diag(self.drone.J) - [self.drone.IXX, self.drone.IYY, self.drone.IZZ]) \
+                / [self.drone.IXX, self.drone.IYY, self.drone.IZZ] / dr,
+            [(self.drone.force_torque_factor_0 - self.drone.FORCE_TORQUE_FACTOR_0) \
+                / self.drone.FORCE_TORQUE_FACTOR_0 / dr],
+            [(self.drone.force_torque_factor_1 - self.drone.FORCE_TORQUE_FACTOR_1) \
+                / self.drone.FORCE_TORQUE_FACTOR_1 / dr], 
+            (self.drone.T - self.drone.MOTOR_TIME_CONSTANT) \
+                / self.drone.MOTOR_TIME_CONSTANT / dr,
+            (self.drone.thrust_to_weight_ratio - self.drone.THRUST2WEIGHT_RATIO) \
+                / self.drone.THRUST2WEIGHT_RATIO / dr
+        ])
+        return {
+            'hidden_state': hidden_state,
+            'dynamics': dynamics
+        }
 
     @abc.abstractmethod
     def compute_observation(self, target_pos=None) -> np.ndarray:
         """Returns the current observation of the environment."""
 
         # ===> New Code
-        obs_mask = {
-            'xyz':        self.observation_model in ['state'] and self.observe_position,
-            'z':          self.observation_model in ['sensor'],
-            'quaternion': self.observation_model in ['state'],
-            'xyz_dot':    self.observation_model in ['state'],
-            'xyz_acc':    self.observation_model in ['sensor'],
-            'rpy_dot':    self.observation_model in ['sensor','state'],
-        }
+        obs_mask = self.get_observation_mask()
 
         if self.observation_noise > 0:  # add noise only for positive values
             if self.iteration % self.obs_rate == 0:
@@ -366,7 +393,8 @@ class DroneBaseEnv(gym.Env, abc.ABC):
             # apply low-pass filtering to gyro (happens with 100Hz):
             omega = self.gyro_lpf.apply(omega)
             obs = np.concatenate([
-                xyz.tolist()  * obs_mask['xyz'], 
+                [xyz[0]]      * obs_mask['x'], 
+                [xyz[1]]      * obs_mask['y'], 
                 [xyz[2]]      * obs_mask['z'],
                 quat.tolist() * obs_mask['quaternion'], 
                 vel.tolist()  * obs_mask['xyz_dot'], 
