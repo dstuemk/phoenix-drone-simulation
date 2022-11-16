@@ -348,9 +348,9 @@ class DroneBaseEnv(gym.Env, abc.ABC):
                 / self.drone.FORCE_TORQUE_FACTOR_0 / dr],
             [(self.drone.force_torque_factor_1 - self.drone.FORCE_TORQUE_FACTOR_1) \
                 / self.drone.FORCE_TORQUE_FACTOR_1 / dr], 
-            (self.drone.T - self.drone.MOTOR_TIME_CONSTANT) \
+            np.array(self.drone.T - self.drone.MOTOR_TIME_CONSTANT).reshape((-1,)) \
                 / self.drone.MOTOR_TIME_CONSTANT / dr,
-            (self.drone.thrust_to_weight_ratio - self.drone.THRUST2WEIGHT_RATIO) \
+            np.array(self.drone.thrust_to_weight_ratio - self.drone.THRUST2WEIGHT_RATIO).reshape((-1,)) \
                 / self.drone.THRUST2WEIGHT_RATIO / dr
         ])
         return {
