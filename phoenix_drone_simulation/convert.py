@@ -14,6 +14,24 @@ import os
 from phoenix_drone_simulation.utils import utils
 from phoenix_drone_simulation.utils import export
 
+def convert(ckpt,output,save_file_path=None):
+    assert os.path.exists(ckpt)
+    if output == 'h5':
+        ac, env = utils.load_actor_critic_and_env_from_disk(ckpt)
+        export.convert_actor_critic_to_h5(
+            actor_critic=ac,
+            file_path=ckpt,
+            save_file_path=save_file_path
+        )
+    elif output == 'dat':
+        ac, env = utils.load_actor_critic_and_env_from_disk(ckpt)
+        export.convert_actor_critic_to_dat(
+            actor_critic=ac,
+            file_path=ckpt,
+            save_file_path=save_file_path
+        )
+    else:
+        raise ValueError('Expecting h5 file output.')
 
 
 if __name__ == '__main__':
@@ -22,16 +40,8 @@ if __name__ == '__main__':
     )
     parser.add_argument('--ckpt', type=str, required=True,
                         help='Name path of the file to be converted.}')
-    parser.add_argument('--output', type=str, default='h5',
-                        help='Choose output file format: [h5].}')
+    parser.add_argument('--output', type=str, default='dat',
+                        help='Choose output file format: [h5, dat].}')
     args = parser.parse_args()
 
-    assert os.path.exists(args.ckpt)
-    if args.output == 'h5':
-        ac, env = utils.load_actor_critic_and_env_from_disk(args.ckpt)
-        export.convert_actor_critic_to_h5(
-            actor_critic=ac,
-            file_path=args.ckpt
-        )
-    else:
-        raise ValueError('Expecting h5 file output.')
+    convert(args.ckpt,args.output)

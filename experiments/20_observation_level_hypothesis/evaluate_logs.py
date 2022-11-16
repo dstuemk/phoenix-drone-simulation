@@ -2,11 +2,14 @@ import argparse
 import os
 import json
 import pathlib
+import shutil
 
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+
+from phoenix_drone_simulation.convert import convert
 
 # Global variables
 parent_dir = os.path.realpath(os.path.dirname(__file__))
@@ -21,14 +24,16 @@ def column_name_mapper(name:str):
         'observation_model': 'obs_model'
     }.get(name, name)
 
-def load_dataframe():
-    progess_files_list = list(pathlib.Path(parent_dir).rglob('progress.csv'))
-    conf_files_list    = list(pathlib.Path(parent_dir).rglob('config.json'))
+def load_dataframe(filename,names=None):
+    files_list = list(pathlib.Path(parent_dir).rglob(filename))
+    conf_files_list = [ pathlib.Path(p).parent / 'config.json' for p in  files_list]
     df_buffer = []
-    for progress_file,conf_file in zip(progess_files_list,conf_files_list):
-        df_combined = pd.read_csv(progress_file)
+    for file,conf_file in zip(files_list,conf_files_list):
+        df_combined = pd.read_csv(file, delimiter=',', names=names)
         with open(conf_file) as handle:
             dict_conf = json.loads(handle.read())
+        # Meta info
+        df_combined['filename'] = str(file)
         # Copy shallow entries
         for k,v in dict_conf.items():
             if not isinstance(v,dict) and not isinstance(v,list):
@@ -50,9 +55,10 @@ def save_figure(name:str):
         plt.savefig(pathlib.Path(parent_dir) / f"{name}.{ftype}", bbox_inches='tight')
 
 if __name__ == '__main__':
-    df = load_dataframe()
+    df = load_dataframe('progress.csv')
     cn = column_name_mapper
 
+    # Training rewards
     plt.figure()
     g = sns.relplot(
         data=df[df.Epoch % 5 == 0], 
@@ -66,5 +72,47 @@ if __name__ == '__main__':
     plt.subplots_adjust(hspace=0.3)
     save_figure("reward_training")
 
+    # Evaluation returns
+    df = load_dataframe('returns.csv', ['return'])
+    df['run'] = df.index
+    grouped = df.groupby([
+        cn('filename'),
+        cn("observation_history_size"),
+        cn("domain_randomization"),
+        cn("observation_model"),
+        cn("actor")
+    ])['return'].mean()
+    grouped = grouped.reset_index()
+    grouped = grouped.sort_values('return')
+    grouped = grouped.drop_duplicates([
+        cn("observation_history_size"),
+        cn("domain_randomization"),
+        cn("observation_model"),
+        cn("actor")
+    ],keep='last')
+    df = df[df.filename.isin(grouped.filename)]
+    g = sns.catplot(
+        data=df, 
+        x=cn("observation_history_size"), y=cn("return"), col=cn("domain_randomization"),
+        row=cn("observation_model"), 
+        hue=cn("actor"), kind="box",
+        height=3, aspect=3/4
+    )
+    #g.set(yscale='symlog')
+    #g.set(ylim=(df['return'].min() - 10, df['return'].max() + 1))
+    for ax in g.axes.ravel():
+        ax.set_title(ax.get_title().replace("|", "\n"))
+    plt.subplots_adjust(hspace=0.3)
+    save_figure("return_evaluation")
 
-
+    # Automatically export best policies
+    for filename in grouped['filename']:
+        dirname = pathlib.Path(filename).parent
+        print(f"export: {dirname}")
+        convert(dirname, 'dat')
+        folder_to_copy = pathlib.Path(dirname).parent
+        shutil.copytree(
+            str(folder_to_copy), 
+            str(pathlib.Path(parent_dir) / "best" / os.path.basename(folder_to_copy)),
+            dirs_exist_ok=True )
+    
