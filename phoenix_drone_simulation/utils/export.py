@@ -7,7 +7,6 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
-import tensorflow as tf
 
 # local imports
 import phoenix_drone_simulation
@@ -64,8 +63,10 @@ def copy_Dense(lay_tf, lay_torch):
 
 def convert_actor_critic_to_h5(actor_critic: torch.nn.Module,
                                file_path: str,
-                               file_name: str = 'model.h5'
+                               file_name: str = 'model.h5',
+                               save_file_path = None,
                                ):
+    import tensorflow as tf
     net_torch = actor_critic.pi.net
     model_tf = None
     get_layer = lambda tensor: model_tf.get_layer(
@@ -129,7 +130,125 @@ def convert_actor_critic_to_h5(actor_critic: torch.nn.Module,
     mse = np.mean(err)
     print(f"Test squared error (avg / max): {mse} / {np.max(err)}")
 
+    if save_file_path is not None:
+        file_path = save_file_path
+    os.makedirs(file_path, exist_ok=True)
     save_file_name_path = os.path.join(file_path, file_name)
     model_tf.save(save_file_name_path, save_format='h5')
     print(f"Saved model to: {save_file_name_path}")
+
+
+def convert_actor_critic_to_dat(actor_critic: torch.nn.Module,
+                               file_path: str,
+                               file_name: str = 'model.dat',
+                               save_file_path = None,
+                               param_dtype = np.float16
+                               ):
+    layer_ids = {
+        'NORMALIZATION': 0,
+        'DENSE'        : 1,
+        'LSTM'         : 2,
+        'ACTIVATION'   : 3
+    }
+    activation_ids = {
+        'LINEAR'      : 0,
+        'RELU'        : 1,
+    }
+    net_torch = actor_critic.pi.net
+    net_arr = []
+    layer_arr = []
+    # Add normalization layer
+    n_in = actor_critic.obs_oms.shape[0]
+    n_out = actor_critic.obs_oms.shape[0]
+    layer_arr += np.array([ 
+        4*actor_critic.obs_oms.shape[0], # N.O. parameters
+        layer_ids['NORMALIZATION'],      # Layer type
+        n_in,                            # Input size
+        n_out                            # Output size 
+    ], dtype=np.int32).tobytes()
+    layer_arr += actor_critic.obs_oms.mean.numpy().astype(param_dtype).tobytes()         # Mean
+    layer_arr += (actor_critic.obs_oms.std.numpy() \
+        + actor_critic.obs_oms.eps).astype(param_dtype).tobytes()                        # Std
+    layer_arr += np.ones(n_out).astype(param_dtype).tobytes()                            # Gamma
+    layer_arr += np.zeros(n_out).astype(param_dtype).tobytes()                           # Beta
+    net_arr.append(layer_arr)
+
+    for module in list(net_torch.modules()):
+        layer_arr = []
+        # Cells
+        if isinstance(module, nn.LSTM):
+            n_in = n_out
+            n_out = module.hidden_size
+            layer_arr += np.array([ 
+                4*(n_out*n_out + n_in*n_out + n_out) + \
+                    2*n_out,                          # N.O. parameters + states
+                layer_ids['LSTM'],                    # Layer type
+                n_in,                                 # Input size
+                n_out                                 # Output size 
+            ], dtype=np.int32).tobytes()
+            lay_torch = list(module.parameters())
+            #           Kernel        Rec. Kernel   Bias
+            for mat in [lay_torch[0], lay_torch[1], lay_torch[2] + lay_torch[3]]:
+                mat_sel = mat.detach().numpy().astype(param_dtype)
+                for mat_idx in range(4):
+                    row_range = slice(mat_idx*n_out, (mat_idx+1)*n_out)
+                    layer_arr += mat_sel[row_range].transpose().flatten().tobytes()     
+            layer_arr += np.array([0.0]*(2*n_out),dtype=param_dtype).tobytes() # States    
+            net_arr.append(layer_arr)
+        elif isinstance(module, nn.Linear):
+            n_in = n_out
+            n_out = module.out_features
+            layer_arr += np.array([ 
+                n_out*(n_in + 1),                     # N.O. parameters
+                layer_ids['DENSE'],                   # Layer type
+                n_in,                                 # Input size
+                n_out                                 # Output size 
+            ], dtype=np.int32).tobytes()
+            lay_torch = list(module.parameters())
+            layer_arr += np.concatenate([
+                lay_torch[0].detach().numpy().transpose().flatten(),
+                lay_torch[1].detach().numpy().transpose().flatten()
+            ], dtype=param_dtype).tobytes()
+            net_arr.append(layer_arr)
+        # Activations
+        if isinstance(module, nn.Identity):
+            n_in = n_out
+            layer_arr += np.array([ 
+                1,                         # N.O. parameters
+                layer_ids['ACTIVATION'],   # Layer type
+                n_in,                      # Input size
+                n_out                      # Output size 
+            ], dtype=np.int32).tobytes()
+            layer_arr += np.array([
+                activation_ids['LINEAR']
+            ], dtype=param_dtype).tobytes()
+            # Omit linear activation, they are just overhead ...
+            # net_arr.append(layer_arr) 
+        elif isinstance(module, nn.ReLU):
+            n_in = n_out
+            layer_arr += np.array([ 
+                1,                         # N.O. parameters
+                layer_ids['ACTIVATION'],   # Layer type
+                n_in,                      # Input size
+                n_out                      # Output size 
+            ], dtype=np.int32).tobytes()
+            layer_arr += np.array([
+                activation_ids['RELU']
+            ], dtype=param_dtype).tobytes()
+            net_arr.append(layer_arr)
+    
+    net_str = ""
+    for line in net_arr:
+        net_str += " ".join(str(v) for v in line) + "\n"
+    if save_file_path is not None:
+        file_path = save_file_path
+    os.makedirs(file_path, exist_ok=True)
+    save_file_name_path = os.path.join(file_path, file_name)
+    print(f"Save model to: {save_file_name_path}")
+    print(net_str,  file=open(save_file_name_path, 'w'))
+
+    actor_critic.reset_states()
+    inp = [0.0]*actor_critic.obs_oms.shape[0]
+    out,_,_ = actor_critic.step(torch.from_numpy(np.array(inp,dtype=np.float32)))
+    
 
