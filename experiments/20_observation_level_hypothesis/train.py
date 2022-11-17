@@ -13,7 +13,7 @@ env_specific_kwargs = {
         'vf_lr': 3e-3,
         'num_mini_batches': 8,
         'epochs': 300,
-        'steps_per_epoch': 64000,
+        'steps_per_epoch': 64000,      
         'latency':      0.02,          # From Zero-shot paper
         'observation_noise': 1,        # sensor noise enabled when > 0
         'motor_time_constant': 0.120,  # [s]
