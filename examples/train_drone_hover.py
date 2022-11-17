@@ -34,7 +34,10 @@ def main():
         env_id=env_id,
         log_dir=default_log_dir,
         init_seed=random_seed,
-        algorithm_kwargs={'observation_model': 'state'}
+        algorithm_kwargs={
+            'observation_model': 'state', 
+            'randomize_latency': 0.03,
+            'domain_randomization': 0.1 }
     )
     model.compile()
 

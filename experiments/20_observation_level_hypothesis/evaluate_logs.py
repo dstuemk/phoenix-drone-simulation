@@ -60,6 +60,7 @@ if __name__ == '__main__':
 
     # Training rewards
     plt.figure()
+    sns.set_style("darkgrid")
     g = sns.relplot(
         data=df[df.Epoch % 5 == 0], 
         x=cn("Epoch"), y=cn("EpRet/Mean"), col=cn("domain_randomization"),
@@ -91,6 +92,7 @@ if __name__ == '__main__':
         cn("actor")
     ],keep='last')
     df = df[df.filename.isin(grouped.filename)]
+    plt.figure()
     sns.set_style("darkgrid")
     g = sns.catplot(
         data=df, 
