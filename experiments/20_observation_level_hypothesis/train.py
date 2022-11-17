@@ -26,6 +26,7 @@ env_specific_kwargs = {
         'observe_position': True,
         'observation_history_size': 1,
         'use_standardized_obs': 1/5,
+        'randomize_latency': 0.03,     # Experimental
     },
 }
 

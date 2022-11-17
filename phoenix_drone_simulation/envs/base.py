@@ -32,7 +32,8 @@ class DroneBaseEnv(gym.Env, abc.ABC):
             init_rpy_dot: np.ndarray,
             aggregate_phy_steps: int = 2,
             debug=False,
-            domain_randomization: float = -1,  # deactivated when negative value
+            domain_randomization: float = -1,  # deactivated when negative value,
+            randomize_latency: float = -1,     # deactivated when negative
             enable_reset_distribution=True,
             graphics=False,
             latency: float = 0.015,  # [s]
@@ -74,6 +75,7 @@ class DroneBaseEnv(gym.Env, abc.ABC):
         """
         self.debug = debug
         self.domain_randomization = domain_randomization
+        self.randomize_latency = randomize_latency
         self.drone_model = drone_model
         self.enable_reset_distribution = enable_reset_distribution
         self.input_parameters = locals()  # save setting for later reset
@@ -293,6 +295,9 @@ class DroneBaseEnv(gym.Env, abc.ABC):
                 mass=self.drone.m,
                 localInertiaDiagonal=J_diag_sampled
             )
+            # Sample new latency
+            if self.randomize_latency > 0:
+                self.drone.set_latency(np.random.uniform(0,self.randomize_latency))
         else:
             pass
 

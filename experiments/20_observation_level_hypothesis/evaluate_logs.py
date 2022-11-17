@@ -24,8 +24,8 @@ def column_name_mapper(name:str):
         'observation_model': 'obs_model'
     }.get(name, name)
 
-def load_dataframe(filename,names=None):
-    files_list = list(pathlib.Path(parent_dir).rglob(filename))
+def load_dataframe(filename,names=None,folder_name=""):
+    files_list = list((pathlib.Path(parent_dir) / folder_name).rglob(filename))
     conf_files_list = [ pathlib.Path(p).parent / 'config.json' for p in  files_list]
     df_buffer = []
     for file,conf_file in zip(files_list,conf_files_list):
@@ -55,7 +55,7 @@ def save_figure(name:str):
         plt.savefig(pathlib.Path(parent_dir) / f"{name}.{ftype}", bbox_inches='tight')
 
 if __name__ == '__main__':
-    df = load_dataframe('progress.csv')
+    df = load_dataframe('progress.csv',folder_name='log-dir')
     cn = column_name_mapper
 
     # Training rewards
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     save_figure("reward_training")
 
     # Evaluation returns
-    df = load_dataframe('returns.csv', ['return'])
+    df = load_dataframe('returns.csv',['return'],folder_name='log-dir')
     df['run'] = df.index
     grouped = df.groupby([
         cn('filename'),
@@ -91,6 +91,7 @@ if __name__ == '__main__':
         cn("actor")
     ],keep='last')
     df = df[df.filename.isin(grouped.filename)]
+    sns.set_style("darkgrid")
     g = sns.catplot(
         data=df, 
         x=cn("observation_history_size"), y=cn("return"), col=cn("domain_randomization"),
@@ -98,14 +99,18 @@ if __name__ == '__main__':
         hue=cn("actor"), kind="box",
         height=3, aspect=3/4
     )
-    #g.set(yscale='symlog')
-    #g.set(ylim=(df['return'].min() - 10, df['return'].max() + 1))
+    g.set(yscale='symlog')
+    g.set(yticks=[-5,-10,-25,-50,-100,-500])
+    g.set(yticklabels=[f"{v:.1e}" for v in [-5,-10,-25,-50,-100,-500]])
+    g.set(ylim=(df['return'].min() - 50, df['return'].max() + 1))
     for ax in g.axes.ravel():
         ax.set_title(ax.get_title().replace("|", "\n"))
     plt.subplots_adjust(hspace=0.3)
     save_figure("return_evaluation")
 
     # Automatically export best policies
+    folder_dest = pathlib.Path(parent_dir) / "best"
+    shutil.rmtree(str(folder_dest), ignore_errors=True)
     for filename in grouped['filename']:
         dirname = pathlib.Path(filename).parent
         print(f"export: {dirname}")
@@ -113,6 +118,6 @@ if __name__ == '__main__':
         folder_to_copy = pathlib.Path(dirname).parent
         shutil.copytree(
             str(folder_to_copy), 
-            str(pathlib.Path(parent_dir) / "best" / os.path.basename(folder_to_copy)),
+            str(folder_dest / os.path.basename(folder_to_copy)),
             dirs_exist_ok=True )
     
