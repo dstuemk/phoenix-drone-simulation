@@ -28,7 +28,7 @@ env_specific_kwargs = {
 }
 
 common_grid_dict = {
-    'domain_randomization': [0.0, 0.1],
+    'domain_randomization': [0.1, 0.0],
     'observation_model': ['sensor', 'state'],
 }
 
