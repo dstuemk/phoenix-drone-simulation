@@ -494,7 +494,8 @@ def load_actor_critic_and_env_from_disk(
         use_scaled_rewards=conf['use_reward_scaling'],
         ac_kwargs=conf['ac_kwargs']
     )
-    model_path = os.path.join(file_name_path, 'torch_save', 'model.pt')
+    #model_path = os.path.join(file_name_path, 'torch_save', f"model{conf['epochs']}.pt")
+    model_path = os.path.join(file_name_path, 'torch_save', f"model.pt")
     ac.load_state_dict(torch.load(model_path), strict=False)
     print(f'Successfully loaded model from: {model_path}')
     return ac, env

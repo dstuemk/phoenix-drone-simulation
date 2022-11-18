@@ -13,11 +13,6 @@ import pandas as pd
 from phoenix_drone_simulation.utils import utils
 from phoenix_drone_simulation.convert import convert
 
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-
 
 # Global variables
 parent_dir = os.path.realpath(os.path.dirname(__file__))
@@ -62,55 +57,12 @@ def save_figure(name:str):
     for ftype in imgtypes:
         plt.savefig(pathlib.Path(parent_dir) / f"{name}.{ftype}", bbox_inches='tight')
 
-def eval_once(ac,env):
-        assert not ac.training, 'Call actor_critic.eval() beforehand.'
-        done = False
-        ac.reset_states()
-        x = env.reset()
-        ret = 0.
-        costs = 0.
-        episode_length = 0
-
-        while not done:
-            obs = torch.as_tensor(x, dtype=torch.float32)
-            action, value, *_ = ac(obs)
-            x, r, done, info = env.step(action)
-            ret += r
-            costs += info.get('cost', 0.)
-            episode_length += 1
-
-        return ret, episode_length, costs
-
 if __name__ == '__main__':
     cn = column_name_mapper
     
     # Evaluation returns
     df = load_dataframe('returns.csv',['return'],folder_name='log-dir')
     df['run'] = df.index
-    returns_new = []
-    models_and_envs = {}
-    np.random.seed(rank)    
-    for fn in np.split(np.array(df.filename),size)[rank]:
-        ckpt = pathlib.Path(fn).parent
-        if ckpt in models_and_envs:
-            ac,env = models_and_envs[ckpt]
-        else:
-            models_and_envs.clear()
-            ac, env = utils.load_actor_critic_and_env_from_disk(ckpt)
-            models_and_envs[ckpt] = (ac,env)
-            print(f"Rank {rank}, Evaluate: {str(ckpt)}")
-        ac.eval()
-        ret,ep_len,c = eval_once(ac,env)
-        print(f"Rank {rank}, Return: {ret}")
-        returns_new.append(ret)
-    returns_new = comm.gather(returns_new, root=0)
-    if rank != 0:
-        print(f"Rank {rank} finished")
-        exit()
-    returns_new = np.concatenate(returns_new).tolist()
-    with open(pathlib.Path(parent_dir) / "returns_new.csv", "w") as outfile:
-        outfile.write("\n".join(str(v) for v in returns_new))
-    df['return'] = returns_new
     grouped = df.groupby([
         cn('filename'),
         cn("observation_history_size"),
@@ -146,17 +98,17 @@ if __name__ == '__main__':
     save_figure("return_evaluation")
 
     # Automatically export best policies
-    folder_dest = pathlib.Path(parent_dir) / "best"
-    shutil.rmtree(str(folder_dest), ignore_errors=True)
-    for filename in grouped['filename']:
-        dirname = pathlib.Path(filename).parent
-        print(f"export: {dirname}")
-        convert(dirname, 'dat')
-        folder_to_copy = pathlib.Path(dirname).parent
-        shutil.copytree(
-            str(folder_to_copy), 
-            str(folder_dest / os.path.basename(folder_to_copy)),
-            dirs_exist_ok=True )
+    #folder_dest = pathlib.Path(parent_dir) / "best"
+    #shutil.rmtree(str(folder_dest), ignore_errors=True)
+    #for filename in grouped['filename']:
+    #    dirname = pathlib.Path(filename).parent
+    #    print(f"export: {dirname}")
+    #    convert(dirname, 'dat')
+    #    folder_to_copy = pathlib.Path(dirname).parent
+    #    shutil.copytree(
+    #        str(folder_to_copy), 
+    #        str(folder_dest / os.path.basename(folder_to_copy)),
+    #        dirs_exist_ok=True )
 
     # Training rewards
     df = load_dataframe('progress.csv',folder_name='log-dir')

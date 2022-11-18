@@ -8,10 +8,7 @@ NUM_RUNS = 5
 
 env_specific_kwargs = {
     ENV: {
-        'pi_lr': 1e-3,
-        'vf_lr': 3e-3,
-        'num_mini_batches': 8,
-        'epochs': 300,
+        'epochs': 500,
         'steps_per_epoch': 64000,
         'latency':      0.00,          # From Zero-shot paper: 0.02
         'observation_noise': 1,        # sensor noise enabled when > 0
@@ -47,12 +44,12 @@ recurrent_grid_dict = {
             'pi': {
                 'activation': 'identity',
                 'hidden_sizes': [20, 20],
-                'layer': 'LSTM'
+                'layer': 'GRU'
             },
             'val': {
                 'activation': 'identity',
                 'hidden_sizes': [128, 128],
-                'layer': 'LSTM'
+                'layer': 'GRU'
             }
         }
     ]
