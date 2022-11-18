@@ -1,4 +1,3 @@
-
 import phoenix_drone_simulation
 from phoenix_drone_simulation.train import get_training_command_line_args
 from phoenix_drone_simulation.benchmark import Benchmark
@@ -13,8 +12,8 @@ env_specific_kwargs = {
         'vf_lr': 3e-3,
         'num_mini_batches': 8,
         'epochs': 300,
-        'steps_per_epoch': 64000,      
-        'latency':      0.02,          # From Zero-shot paper
+        'steps_per_epoch': 64000,
+        'latency':      0.00,          # From Zero-shot paper: 0.02
         'observation_noise': 1,        # sensor noise enabled when > 0
         'motor_time_constant': 0.120,  # [s]
         'motor_thrust_noise': 0.05,    # noise in % added to thrusts
@@ -31,7 +30,7 @@ env_specific_kwargs = {
 }
 
 common_grid_dict = {
-    'domain_randomization': [0.0, 0.1],
+    'domain_randomization': [0.1,0.0],
     'observation_model': ['sensor', 'state'],
 }
 
@@ -46,12 +45,12 @@ recurrent_grid_dict = {
     'ac_kwargs': [
         {
             'pi': {
-                'activation': 'identity', 
+                'activation': 'identity',
                 'hidden_sizes': [20, 20],
                 'layer': 'LSTM'
-            }, 
+            },
             'val': {
-                'activation': 'identity', 
+                'activation': 'identity',
                 'hidden_sizes': [128, 128],
                 'layer': 'LSTM'
             }
@@ -71,11 +70,11 @@ forward_grid_dict = {
     'ac_kwargs': [
         {
             'pi': {
-                'activation': 'relu', 
+                'activation': 'relu',
                 'hidden_sizes': [32, 32]
-            }, 
+            },
             'val': {
-                'activation': 'tanh', 
+                'activation': 'tanh',
                 'hidden_sizes': [300, 300]
             }
         },
