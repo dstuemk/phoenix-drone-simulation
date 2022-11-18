@@ -9,7 +9,7 @@ NUM_RUNS = 5
 
 env_specific_kwargs = {
     ENV: {
-        'epochs': 500,
+        'epochs': 300,
         'steps_per_epoch': 64000,      
         'latency':      0.02,          # From Zero-shot paper
         'observation_noise': 1,        # sensor noise enabled when > 0
@@ -22,7 +22,7 @@ env_specific_kwargs = {
         'save_freq': 25,
         'observe_position': True,
         'observation_history_size': 1,
-        'use_standardized_obs': 1/5,
+        'use_standardized_obs': 1,
         'randomize_latency': -1,       # Experimental
     },
 }

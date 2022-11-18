@@ -148,7 +148,8 @@ def convert_actor_critic_to_dat(actor_critic: torch.nn.Module,
         'NORMALIZATION': 0,
         'DENSE'        : 1,
         'LSTM'         : 2,
-        'ACTIVATION'   : 3
+        'ACTIVATION'   : 3,
+        'GRU'          : 4
     }
     activation_ids = {
         'LINEAR'      : 0,
@@ -194,6 +195,25 @@ def convert_actor_critic_to_dat(actor_critic: torch.nn.Module,
                     row_range = slice(mat_idx*n_out, (mat_idx+1)*n_out)
                     layer_arr += mat_sel[row_range].transpose().flatten().tobytes()     
             layer_arr += np.array([0.0]*(2*n_out),dtype=param_dtype).tobytes() # States    
+            net_arr.append(layer_arr)
+        elif isinstance(module, nn.GRU):
+            n_in = n_out
+            n_out = module.hidden_size
+            layer_arr += np.array([ 
+                3*(n_out*n_out + n_in*n_out + 2*n_out) + \
+                    1*n_out,                          # N.O. parameters + states
+                layer_ids['GRU'],                     # Layer type
+                n_in,                                 # Input size
+                n_out                                 # Output size 
+            ], dtype=np.int32).tobytes()
+            lay_torch = list(module.parameters())
+            #           Kernel        Rec. Kernel   Bias 
+            for mat in [lay_torch[0], lay_torch[1], lay_torch[2], lay_torch[3]]:
+                mat_sel = mat.detach().numpy().astype(param_dtype)
+                for mat_idx in [1,0,2]:
+                    row_range = slice(mat_idx*n_out, (mat_idx+1)*n_out)
+                    layer_arr += mat_sel[row_range].transpose().flatten().tobytes() 
+            layer_arr += np.array([0.0]*n_out,dtype=param_dtype).tobytes() # States    
             net_arr.append(layer_arr)
         elif isinstance(module, nn.Linear):
             n_in = n_out
@@ -247,6 +267,7 @@ def convert_actor_critic_to_dat(actor_critic: torch.nn.Module,
     print(f"Save model to: {save_file_name_path}")
     print(net_str,  file=open(save_file_name_path, 'w'))
 
+    actor_critic.training = False
     actor_critic.reset_states()
     inp = [0.0]*actor_critic.obs_oms.shape[0]
     out,_,_ = actor_critic.step(torch.from_numpy(np.array(inp,dtype=np.float32)))
