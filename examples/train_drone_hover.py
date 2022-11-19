@@ -37,7 +37,22 @@ def main():
         algorithm_kwargs={
             'observation_model': 'state', 
             'randomize_latency': 0.03,
-            'domain_randomization': 0.1 }
+            'domain_randomization': 0.1,
+            'actor': 'recurrent',
+            'critic': 'recurrent',
+            'ac_kwargs': {
+                'pi': {
+                    'activation': 'relu',
+                    'hidden_sizes': [20, 40],
+                    'layer': 'LSTM'
+                },
+                'val': {
+                    'activation': 'tanh',
+                    'hidden_sizes': [128, 300],
+                    'layer': 'LSTM'
+                }
+            } 
+        }
     )
     model.compile()
 

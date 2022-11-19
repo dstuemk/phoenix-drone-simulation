@@ -1,4 +1,3 @@
-
 import phoenix_drone_simulation
 from phoenix_drone_simulation.train import get_training_command_line_args
 from phoenix_drone_simulation.benchmark import Benchmark
@@ -9,20 +8,22 @@ NUM_RUNS = 5
 
 env_specific_kwargs = {
     ENV: {
-        'epochs': 300,
-        'steps_per_epoch': 64000,      
+        #'vf_lr': 5e-3,
+        #'pi_lr': 2e-3,
+        'epochs': 500,
+        'steps_per_epoch': 64000,
         'latency':      0.02,          # From Zero-shot paper
         'observation_noise': 1,        # sensor noise enabled when > 0
         'motor_time_constant': 0.120,  # [s]
         'motor_thrust_noise': 0.05,    # noise in % added to thrusts
         'penalty_spin': 0.001,
         'max_ep_len': 500,
-        'seq_len': 100,
-        'seq_overlap': 50,
+        'seq_len': 64,
+        'seq_overlap': 32,
         'save_freq': 25,
         'observe_position': True,
         'observation_history_size': 1,
-        'use_standardized_obs': 1,
+        'use_standardized_obs': 1/4,
         'randomize_latency': -1,       # Experimental
     },
 }
@@ -43,14 +44,14 @@ recurrent_grid_dict = {
     'ac_kwargs': [
         {
             'pi': {
-                'activation': 'identity', 
+                #'activation': 'identity',
                 'hidden_sizes': [20, 20],
-                'layer': 'GRU'
-            }, 
+                'layer': 'LSTM'
+            },
             'val': {
-                'activation': 'identity', 
+                #'activation': 'identity',
                 'hidden_sizes': [128, 128],
-                'layer': 'GRU'
+                'layer': 'LSTM'
             }
         }
     ]
@@ -68,11 +69,11 @@ forward_grid_dict = {
     'ac_kwargs': [
         {
             'pi': {
-                'activation': 'relu', 
+                'activation': 'relu',
                 'hidden_sizes': [32, 32]
-            }, 
+            },
             'val': {
-                'activation': 'tanh', 
+                'activation': 'tanh',
                 'hidden_sizes': [300, 300]
             }
         },

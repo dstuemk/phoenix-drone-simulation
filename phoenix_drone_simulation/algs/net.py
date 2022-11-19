@@ -91,16 +91,23 @@ def build_recurrent_network(
     layers = list()
     layers_rnn = []
     for j in range(len(sizes) - 1):
-        act = activation if j < len(sizes) - 2 else output_activation
-        lay_stateless = layer(sizes[j], sizes[j + 1], batch_first=True) if j < len(sizes) - 2 else None
-        if lay_stateless is None:
-            lay_affine = nn.Linear(sizes[j], sizes[j + 1])
-            initialize_layer(weight_initialization, lay_affine)
-            lay_statefull = lay_affine
+        if j == 0:
+            # Recurrent layer
+            lay = layer(sizes[j], sizes[j + 1], batch_first=True)
+            lay = StatefulRNN(lay)
+            layers_rnn.append(lay)
+            act = convert_str_to_torch_functional('identity')
+        elif j < len(sizes) - 2:
+            # Hidden linear layer
+            lay = nn.Linear(sizes[j], sizes[j + 1])
+            initialize_layer(weight_initialization, lay)
+            act = activation
         else:
-            lay_statefull = StatefulRNN(lay_stateless)
-            layers_rnn.append(lay_statefull)
-        layers += [lay_statefull, act()]
+            # Output linear layer
+            lay = nn.Linear(sizes[j], sizes[j + 1])
+            initialize_layer(weight_initialization, lay)
+            act = output_activation
+        layers += [lay, act()]
     return nn.Sequential(*layers), layers_rnn 
 
 def build_forward_network(

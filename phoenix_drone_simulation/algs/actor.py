@@ -118,6 +118,7 @@ class RecurrentGaussianActor(Actor):
         layers = [self.obs_dim] + list(hidden_sizes) + [self.act_dim]
         self.net, self.layers_rnn = build_recurrent_network(
             layers,
+            activation=activation,
             weight_initialization=weight_initialization,
             layer=layer
         )
