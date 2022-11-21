@@ -8,8 +8,6 @@ NUM_RUNS = 5
 
 env_specific_kwargs = {
     ENV: {
-        #'vf_lr': 5e-3,
-        #'pi_lr': 2e-3,
         'epochs': 500,
         'steps_per_epoch': 64000,
         'latency':      0.02,          # From Zero-shot paper
@@ -44,14 +42,16 @@ recurrent_grid_dict = {
     'ac_kwargs': [
         {
             'pi': {
-                #'activation': 'identity',
-                'hidden_sizes': [20, 20],
-                'layer': 'LSTM'
+                'activation': 'relu',
+                'hidden_sizes': [16, 32],
+                'layer': 'LSTM',
+                'n_recurrent': 1,
             },
             'val': {
-                #'activation': 'identity',
-                'hidden_sizes': [128, 128],
-                'layer': 'LSTM'
+                'activation': 'tanh',
+                'hidden_sizes': [128, 300],
+                'layer': 'LSTM',
+                'n_recurrent': 1,
             }
         }
     ]

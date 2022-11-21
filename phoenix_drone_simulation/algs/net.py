@@ -83,15 +83,18 @@ def build_recurrent_network(
         activation='identity',
         output_activation='identity',
         weight_initialization='kaiming_uniform',
-        layer='GRU'
+        layer='GRU',
+        n_recurrent=1
 ):
     layer = convert_str_to_torch_layer(layer)
     activation = convert_str_to_torch_functional(activation)
     output_activation = convert_str_to_torch_functional(output_activation)
     layers = list()
     layers_rnn = []
+    if n_recurrent == -1:
+        n_recurrent = len(sizes) - 2
     for j in range(len(sizes) - 1):
-        if j == 0:
+        if j < n_recurrent:
             # Recurrent layer
             lay = layer(sizes[j], sizes[j + 1], batch_first=True)
             lay = StatefulRNN(lay)

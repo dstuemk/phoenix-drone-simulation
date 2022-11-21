@@ -270,6 +270,8 @@ def convert_actor_critic_to_dat(actor_critic: torch.nn.Module,
     actor_critic.training = False
     actor_critic.reset_states()
     inp = [0.0]*actor_critic.obs_oms.shape[0]
-    out,_,_ = actor_critic.step(torch.from_numpy(np.array(inp,dtype=np.float32)))
+    for i in range(2):
+        out,_,_ = actor_critic.step(torch.from_numpy(np.array(inp,dtype=np.float32)))
+        print(f"[{i}] output = {out}")
     
 

@@ -8,7 +8,7 @@ NUM_RUNS = 5
 
 env_specific_kwargs = {
     ENV: {
-        'epochs': 300,
+        'epochs': 500,
         'steps_per_epoch': 64000,
         'latency':      0.00,          # From Zero-shot paper: 0.02
         'observation_noise': 1,        # sensor noise enabled when > 0
@@ -16,18 +16,18 @@ env_specific_kwargs = {
         'motor_thrust_noise': 0.05,    # noise in % added to thrusts
         'penalty_spin': 0.001,
         'max_ep_len': 500,
-        'seq_len': 100,
-        'seq_overlap': 50,
+        'seq_len': 64,
+        'seq_overlap': 32,
         'save_freq': 25,
         'observe_position': True,
         'observation_history_size': 1,
-        'use_standardized_obs': 1,
+        'use_standardized_obs': 1/4,
         'randomize_latency': 0.03,     # Experimental
     },
 }
 
 common_grid_dict = {
-    'domain_randomization': [0.1,0.0],
+    'domain_randomization': [0.1, 0.0],
     'observation_model': ['sensor', 'state'],
 }
 
@@ -42,14 +42,16 @@ recurrent_grid_dict = {
     'ac_kwargs': [
         {
             'pi': {
-                'activation': 'identity',
-                'hidden_sizes': [20, 20],
-                'layer': 'GRU'
+                'activation': 'relu',
+                'hidden_sizes': [16, 32],
+                'layer': 'LSTM',
+                'n_recurrent': 1,
             },
             'val': {
-                'activation': 'identity',
-                'hidden_sizes': [128, 128],
-                'layer': 'GRU'
+                'activation': 'tanh',
+                'hidden_sizes': [128, 300],
+                'layer': 'LSTM',
+                'n_recurrent': 1,
             }
         }
     ]
