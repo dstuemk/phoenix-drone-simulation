@@ -44,12 +44,14 @@ def main():
                 'pi': {
                     'activation': 'relu',
                     'hidden_sizes': [20, 40],
-                    'layer': 'LSTM'
+                    'layer': 'LSTM',
+                    'n_recurrent': 1,
                 },
                 'val': {
                     'activation': 'tanh',
                     'hidden_sizes': [128, 300],
-                    'layer': 'LSTM'
+                    'layer': 'LSTM',
+                    'n_recurrent': 1,
                 }
             } 
         }

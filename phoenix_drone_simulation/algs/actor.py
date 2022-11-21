@@ -109,18 +109,16 @@ class RecurrentGaussianActor(Actor):
             obs_dim,
             act_dim,
             hidden_sizes,
-            activation,
-            weight_initialization,
-            layer='GRU',
-            final_std=0.01):
+            final_std=0.01,
+            weight_initialization='kaiming_uniform',
+            **kwargs):
         super().__init__(obs_dim, act_dim, weight_initialization,final_std=final_std)
         
         layers = [self.obs_dim] + list(hidden_sizes) + [self.act_dim]
         self.net, self.layers_rnn = build_recurrent_network(
             layers,
-            activation=activation,
             weight_initialization=weight_initialization,
-            layer=layer
+            **kwargs
         )
         
     @property

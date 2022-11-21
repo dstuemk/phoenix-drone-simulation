@@ -52,38 +52,23 @@ class Critic(nn.Module):
 @register_critic("recurrent")
 class RecurrentCritic(Critic):
 
-    def __init__(self, obs_dim, hidden_sizes, activation, layer='GRU'):
+    def __init__(self, obs_dim, hidden_sizes, activation, **kwargs):
         super().__init__(obs_dim, hidden_sizes, activation)
 
         self.net, self.layers_rnn = build_recurrent_network(
             [obs_dim] + list(hidden_sizes) + [1],
-            activation=activation, layer=layer
+            activation=activation, 
+            **kwargs
         )
 
     @property
     def is_recurrent(self):
         return True
 
-
-#@register_critic("cascaded")
-#class CascadedCritic(Critic):
-#
-#    def __init__(self, obs_dim, hidden_sizes, activation, layer='GRU'):
-#        super().__init__(obs_dim, hidden_sizes, activation)
-#        
-#        self.net, self.layers_rnn, _ = build_cascaded_network(
-#            [obs_dim] + list(hidden_sizes) + [1],
-#            activation=activation
-#        )
-#
-#    @property
-#    def is_recurrent(self):
-#        return True
-
 @register_critic("forward")
 class ForwardCritic(Critic):
 
-    def __init__(self, obs_dim, hidden_sizes, activation, shared=None, layer=None):
+    def __init__(self, obs_dim, hidden_sizes, activation, **kwargs):
         super().__init__(obs_dim, hidden_sizes, activation)
 
         self.net = build_forward_network(

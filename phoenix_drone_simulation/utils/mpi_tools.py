@@ -91,7 +91,7 @@ def mpi_fork(
         if bind_to_core:
             args += ["-bind-to", "core"]
         if use_number_of_threads:
-            args += ["--use-hwthread-cpus"]
+            args += ["--oversubscribe"] # ["--use-hwthread-cpus"]
         args += [sys.executable] + sys.argv
         # This is the parent process, spawn sub-processes..
         subprocess.check_call(args, env=env)
