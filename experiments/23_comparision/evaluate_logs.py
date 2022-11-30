@@ -2,8 +2,6 @@ import argparse
 import os
 import json
 import pathlib
-import shutil
-import itertools
 
 import torch
 import numpy as np
@@ -133,7 +131,15 @@ if __name__ == '__main__':
 
     # Real-world rewards
     df = load_dataframe('flight__*.csv',folder_name='log-dir',trafo=calculate_reward)
-    grouped = df.copy()
+    grouped = df[df[cn("domain_randomization")] > 0 ]
+    grouped[cn("latency")] = [
+        f"{l}" if r <= 0 else f"0 ... {(r-0.005):.3f}" for r,l in zip(
+            grouped[cn("randomize_latency")], 
+            grouped[cn("latency")]
+    )]
+    grouped[cn("latency")] = pd.Categorical(
+        grouped[cn("latency")], 
+        grouped[cn("latency")].unique()[[1,0,2]])
     grouped[cn("actor")] = [f"{pi} (H={h})" for pi,h in zip(
         grouped[cn("actor")], grouped[cn("observation_history_size")]
     )]
@@ -141,14 +147,15 @@ if __name__ == '__main__':
     sns.set_style("darkgrid")
     g = sns.catplot(
         data=grouped, 
-        x=cn("domain_randomization"), y=cn("Reward"), col=cn("observation_model"),
+        x=cn("latency"), y=cn("Reward"), 
+        row=cn("domain_randomization"), col=cn("observation_model"),
         hue=cn("actor"), kind="box", hue_order=grouped[cn("actor")].unique()[::-1],
         height=3, aspect=1
     )
     g.set(yscale='symlog')
     g.set(yticks=[-5,-10,-25,-50,-100,-200])
     g.set(yticklabels=[f"{v:.0f}" for v in [-5,-10,-25,-50,-100,-200]])
-    g.set(ylim=(df['Reward'].min() - 50, df['Reward'].max() + 1))
+    g.set(ylim=(grouped['Reward'].min() - 50, grouped['Reward'].max() + 1))
     pid = df_pid.Reward
     for ax in g.axes.ravel():
         bar_y = float(pid.quantile(0.75))
@@ -163,20 +170,30 @@ if __name__ == '__main__':
         ax.set_xlim(xlim)
     save_figure("reward_flights")
 
-
     # Real-world success rate
     df = load_dataframe('flight__*.csv',folder_name='log-dir')
-    grouped = df.sort_values('idx')
+    grouped = df[df[cn("domain_randomization")] > 0 ]
+    grouped = grouped.sort_values('idx')
     grouped = grouped.drop_duplicates([
         cn("filename")
     ], keep='last')
     grouped['flight time'] = np.clip(grouped['idx'] / 100, 0, 20)
     grouped['success'] = grouped['flight time'] >= 19.95
+    grouped[cn("latency")] = [
+        f"{l}" if r <= 0 else f"0 ... {(r-0.005):.3f}" for r,l in zip(
+            grouped[cn("randomize_latency")], 
+            grouped[cn("latency")]
+    )]
+    grouped[cn("latency")] = pd.Categorical(
+        grouped[cn("latency")], 
+        grouped[cn("latency")].unique()[[1,0,2]])
+    grouped[cn("actor")] = [f"{pi} (H={h})" for pi,h in zip(
+        grouped[cn("actor")], grouped[cn("observation_history_size")]
+    )]
     grouped = grouped.groupby([
         cn("observation_model"), 
-        cn("domain_randomization"),
-        cn("actor"),  
-        cn("observation_history_size")]).agg({
+        cn("latency"),
+        cn("actor")]).agg({
             "success": [lambda x: np.sum(x) / x.shape[0] * 100],  
             "flight time": ["min", "max", "mean", "median"]
     })
@@ -185,6 +202,12 @@ if __name__ == '__main__':
     # Real-world trajectories
     sns.set_style("whitegrid")
     df = load_dataframe('flight__*.csv',folder_name='log-dir')
+    df = df[df[cn("domain_randomization")] > 0]
+    df[cn("latency")] = [
+        f"{l}" if r <= 0 else f"0 ... {(r-0.005):.3f}" for r,l in zip(
+            df[cn("randomize_latency")], 
+            df[cn("latency")]
+    )]
     t = np.linspace(0,np.pi*2,300)
     z = np.array([1]*t.size)
     y = 0.25*np.sin(t)
@@ -213,29 +236,12 @@ if __name__ == '__main__':
         plt.xlabel("x")
         plt.ylabel("y")
         ax.set_zlabel("z")
-        plt.title(f"DR = {df_traj.iloc[0][cn('domain_randomization')]} | " + \
+        plt.title(f"latency = {df_traj.iloc[0][cn('latency')]} | " + \
             df_traj.iloc[0][cn('observation_model')] + " | " + \
             df_traj.iloc[0][cn('actor')] + \
             f" (H={df_traj.iloc[0][cn('observation_history_size')]})")
         save_figure(f"traj_{ctr:03d}" + df_traj.iloc[0][cn('actor')] + "_H" + \
             str(df_traj.iloc[0][cn('observation_history_size')]) + \
-            "DR_" + str(int(df_traj.iloc[0][cn('domain_randomization')]*10)) + \
+            "lat_" + str(df_traj.iloc[0][cn('latency')]).replace(" ","").replace(".","") + \
             df_traj.iloc[0][cn('observation_model')])
         ctr += 1
-
-    # Training rewards
-    df = load_dataframe('progress.csv',folder_name='log-dir')
-    plt.figure()
-    sns.set_style("darkgrid")
-    g = sns.relplot(
-        data=df[df.Epoch % 5 == 0], 
-        x=cn("Epoch"), y=cn("EpRet/Mean"), col=cn("domain_randomization"),
-        row=cn("observation_model"), hue=cn("actor"), 
-        style=cn("observation_history_size"), kind="line",
-        height=3, aspect=1
-    )
-    for ax in g.axes.ravel():
-        ax.set_title(ax.get_title().replace("|", "\n"))
-    plt.subplots_adjust(hspace=0.3)
-    save_figure("reward_training")
-    
