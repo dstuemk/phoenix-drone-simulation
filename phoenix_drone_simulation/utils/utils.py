@@ -453,7 +453,8 @@ def convert_actor_critic_to_json(
 
 def load_actor_critic_and_env_from_disk(
         file_name_path: str,
-        modify_env_kwargs = lambda x:x
+        modify_env_kwargs = lambda x:x,
+        model_ckpt:str = 'best'
 ) -> tuple:
     """Loads ac module from disk. (@Sven).
 
@@ -463,6 +464,9 @@ def load_actor_critic_and_env_from_disk(
 
     modify_env_kwargs:
         Can be used to change environments initial parameters
+    
+    model_ckpt:
+        Select either 'best' or 'last' training checkpoint to load
 
     Returns
     -------
@@ -494,8 +498,12 @@ def load_actor_critic_and_env_from_disk(
         use_scaled_rewards=conf['use_reward_scaling'],
         ac_kwargs=conf['ac_kwargs']
     )
-    #model_path = os.path.join(file_name_path, 'torch_save', f"model{conf['epochs']}.pt")
-    model_path = os.path.join(file_name_path, 'torch_save', f"model.pt")
+    if model_ckpt == 'last':
+        model_path = os.path.join(file_name_path, 'torch_save', f"model{conf['epochs']}.pt")
+    elif model_ckpt == 'best':
+        model_path = os.path.join(file_name_path, 'torch_save', f"model.pt")
+    else:
+        raise ValueError(f"Invalid model checkpoint selector: {model_ckpt}")
     ac.load_state_dict(torch.load(model_path), strict=False)
     print(f'Successfully loaded model from: {model_path}')
     return ac, env

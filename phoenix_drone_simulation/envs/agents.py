@@ -414,6 +414,7 @@ class CrazyFlieAgent(AgentBase):
         self.latency = new_latency
         if new_latency < self.TIME_STEP:
             self.use_latency = False
+            self.buf_size = 0
         else:
             self.use_latency = True
             self.buf_size = int(self.latency / self.TIME_STEP)

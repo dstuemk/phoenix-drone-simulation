@@ -356,7 +356,8 @@ class DroneBaseEnv(gym.Env, abc.ABC):
             np.array(self.drone.T - self.drone.MOTOR_TIME_CONSTANT).reshape((-1,)) \
                 / self.drone.MOTOR_TIME_CONSTANT / dr,
             np.array(self.drone.thrust_to_weight_ratio - self.drone.THRUST2WEIGHT_RATIO).reshape((-1,)) \
-                / self.drone.THRUST2WEIGHT_RATIO / dr
+                / self.drone.THRUST2WEIGHT_RATIO / dr,
+            [self.drone.buf_size / max(self.randomize_latency // self.drone.TIME_STEP,1)]
         ])
         return {
             'hidden_state': hidden_state,
