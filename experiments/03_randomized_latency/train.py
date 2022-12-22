@@ -22,7 +22,7 @@ env_specific_kwargs = {
         'observe_position': True,
         'observation_history_size': 1,
         'use_standardized_obs': 1/4,
-        'randomize_latency': -1,       # Experimental
+        'randomize_latency': 0.03,     # Experimental
     },
 }
 
@@ -37,22 +37,16 @@ common_grid_dict = {
 
 recurrent_grid_dict = {
     **common_grid_dict,
-    'actor': ['recurrent'],
-    'critic': ['recurrent'],
     'ac_kwargs': [
         {
-            'pi': {
-                'activation': 'relu',
-                'hidden_sizes': [16, 32],
-                'layer': 'LSTM',
-                'n_recurrent': 1,
-            },
-            'val': {
-                'activation': 'tanh',
-                'hidden_sizes': [128, 300],
-                'layer': 'LSTM',
-                'n_recurrent': 1,
-            }
+            'pi':  [ #  size layer  activation   initialization
+                       (16, 'LSTM', 'identity',      None        ),
+                       (32,   'FC',     'relu', 'kaiming_uniform')
+            ],
+            'val': [ #  size layer  activation   initialization
+                      (128, 'LSTM', 'identity',      None        ),
+                      (300,   'FC',     'relu', 'kaiming_uniform')
+            ]
         }
     ]
 }
@@ -64,18 +58,16 @@ recurrent_grid_dict = {
 forward_grid_dict = {
     **common_grid_dict,
     'observation_history_size': [2, 4, 8],
-    'actor': ['forward'],
-    'critic': ['forward'],
     'ac_kwargs': [
         {
-            'pi': {
-                'activation': 'relu',
-                'hidden_sizes': [32, 32]
-            },
-            'val': {
-                'activation': 'tanh',
-                'hidden_sizes': [300, 300]
-            }
+            'pi': [ #  size layer  activation   initialization
+                          (32,   'FC',     'relu', 'kaiming_uniform'),
+                          (32,   'FC',     'relu', 'kaiming_uniform')
+            ],
+            'val': [ #  size layer  activation   initialization
+                          (300,   'FC',     'relu', 'kaiming_uniform'),
+                          (300,   'FC',     'relu', 'kaiming_uniform')
+            ],
         },
     ]
 }
