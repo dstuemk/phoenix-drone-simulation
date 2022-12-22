@@ -111,45 +111,6 @@ def build_mlp_network(data, force_dense_matrices: False) -> torch.nn.Module:
     assert layers is not [], 'Data dict does not hold layer information.'
     return nn.Sequential(*layers)
 
-
-def get_actor_critic_and_env_from_json_model(
-        json_fnp: str,
-        env_id: str,
-        algorithm: str = 'ppo' # look up default actor-critic values
-) -> Tuple[torch.nn.Module, gym.Env]:
-    r"""Loads a policy JSON file and creates an actor-critic Torch model.
-
-    Note: Only the policy parameters are set, the critic still holds random
-    parameter values.
-    """
-    actor_network = load_network_json(json_fnp)
-    env = gym.make(env_id)
-    actor_config = get_defaults_kwargs(alg=algorithm, env_id=env_id)
-
-    ac = core.ActorCritic(
-        actor_type=actor_config['actor'],  # Multi-layer perceptron Actor-critic Torch module
-        observation_space=env.observation_space,
-        action_space=env.action_space,
-        use_standardized_obs=True,
-        use_scaled_rewards=True,
-        ac_kwargs=actor_config['ac_kwargs']
-    )
-
-    # Set observation mean/standard-deviation parameter values
-    data = get_file_contents(json_fnp)
-    scaling_parameters = np.array(data['scaling_parameters'])
-    ac.obs_oms.mean.data = torch.Tensor(scaling_parameters[0])
-    ac.obs_oms.std.data = torch.Tensor(scaling_parameters[1])
-
-
-    ac.pi.net = actor_network  # set and over-write
-    ac.eval()  # set model to evaluation mode
-    loggers.info('Created actor-critic model from JSON:')
-    if loggers.MIN_LEVEL <= loggers.INFO:
-        print(ac)
-    return ac, env
-
-
 def get_alg_module(alg, *submodules):
     """ inspired by source: OpenAI's baselines."""
 

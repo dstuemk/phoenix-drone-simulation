@@ -7,7 +7,7 @@ based on:   Spinning Up's Vanilla Policy Gradient
 import torch
 import torch.nn as nn
 
-from phoenix_drone_simulation.algs.net import build_forward_network, build_recurrent_network
+from phoenix_drone_simulation.algs.net import build_forward_network, build_recurrent_network, build_network
 
 registered_critics = dict()  # global dict that holds pointers to functions 
 
@@ -28,11 +28,11 @@ def get_registered_critic_fn(critic_type: str):
 #       Critic Modules
 # ====================================
 
+@register_critic("nn")
 class Critic(nn.Module):
-    def __init__(self, obs_dim, hidden_sizes, activation):
+    def __init__(self, obs_dim, layers):
         super(Critic, self).__init__()
-        self.layers_rnn = []
-        self.net = None
+        self.net, self.layers_rnn = build_network(obs_dim, 1, layers)
             
     def reset_states(self):
         for lay_rnn in self.layers_rnn:
@@ -46,35 +46,3 @@ class Critic(nn.Module):
     @property
     def is_recurrent(self):
         raise NotImplementedError
-    
-
-
-@register_critic("recurrent")
-class RecurrentCritic(Critic):
-
-    def __init__(self, obs_dim, hidden_sizes, activation, **kwargs):
-        super().__init__(obs_dim, hidden_sizes, activation)
-
-        self.net, self.layers_rnn = build_recurrent_network(
-            [obs_dim] + list(hidden_sizes) + [1],
-            activation=activation, 
-            **kwargs
-        )
-
-    @property
-    def is_recurrent(self):
-        return True
-
-@register_critic("forward")
-class ForwardCritic(Critic):
-
-    def __init__(self, obs_dim, hidden_sizes, activation, **kwargs):
-        super().__init__(obs_dim, hidden_sizes, activation)
-
-        self.net = build_forward_network(
-            [obs_dim] + list(hidden_sizes) + [1],
-            activation=activation)
-
-    @property
-    def is_recurrent(self):
-        return False

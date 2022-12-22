@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 
 from torch.distributions.normal import Normal
-from phoenix_drone_simulation.algs.net import build_forward_network, build_recurrent_network
+from phoenix_drone_simulation.algs.net import build_forward_network, build_recurrent_network, build_network
 
 registered_actors = dict()  # global dict that holds pointers to functions 
 
@@ -31,8 +31,9 @@ def get_registered_actor_fn(actor_type: str, distribution_type: str):
 #       Actor Modules
 # ====================================
 
+@register_actor("nn_gaussian")
 class Actor(nn.Module):
-    def __init__(self, obs_dim, act_dim, weight_initialization, final_std=0.01):
+    def __init__(self, obs_dim, act_dim, layers, final_std=0.01):
         super(Actor, self).__init__()
         log_std = np.log(0.5) * np.ones(act_dim, dtype=np.float32)
         self.log_std = torch.nn.Parameter(torch.as_tensor(log_std),
@@ -40,9 +41,7 @@ class Actor(nn.Module):
         self.obs_dim = obs_dim
         self.act_dim = act_dim
         self.final_std = final_std
-        self.weight_initialization = weight_initialization
-        self.layers_rnn = []
-        self.net = None
+        self.net, self.layers_rnn = build_network(obs_dim, act_dim, layers)
             
     def reset_states(self):
         for lay_rnn in self.layers_rnn:
@@ -101,50 +100,3 @@ class Actor(nn.Module):
     @property
     def is_recurrent(self):
         raise NotImplementedError
-
-@register_actor("recurrent_gaussian")
-class RecurrentGaussianActor(Actor):
-    def __init__(
-            self,
-            obs_dim,
-            act_dim,
-            hidden_sizes,
-            final_std=0.01,
-            weight_initialization='kaiming_uniform',
-            **kwargs):
-        super().__init__(obs_dim, act_dim, weight_initialization,final_std=final_std)
-        
-        layers = [self.obs_dim] + list(hidden_sizes) + [self.act_dim]
-        self.net, self.layers_rnn = build_recurrent_network(
-            layers,
-            weight_initialization=weight_initialization,
-            **kwargs
-        )
-        
-    @property
-    def is_recurrent(self):
-        return True
-
-@register_actor("forward_gaussian")
-class ForwardGaussianActor(Actor):
-    def __init__(
-            self,
-            obs_dim,
-            act_dim,
-            hidden_sizes,
-            activation,
-            weight_initialization,
-            layer=None,
-            final_std=0.01):
-        super().__init__(obs_dim, act_dim, weight_initialization,final_std=final_std)
-
-        layers = [self.obs_dim] + list(hidden_sizes) + [self.act_dim]
-        self.net = build_forward_network(
-            layers,
-            activation=activation,
-            weight_initialization=weight_initialization
-        )
-        
-    @property
-    def is_recurrent(self):
-        return False

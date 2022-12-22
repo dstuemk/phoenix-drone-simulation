@@ -38,21 +38,17 @@ def main():
             'observation_model': 'state', 
             'randomize_latency': 0.03,
             'domain_randomization': 0.1,
-            'actor': 'recurrent',
-            'critic': 'recurrent',
+            'actor': 'nn',
+            'critic': 'nn',
             'ac_kwargs': {
-                'pi': {
-                    'activation': 'relu',
-                    'hidden_sizes': [20, 40],
-                    'layer': 'LSTM',
-                    'n_recurrent': 1,
-                },
-                'val': {
-                    'activation': 'tanh',
-                    'hidden_sizes': [128, 300],
-                    'layer': 'LSTM',
-                    'n_recurrent': 1,
-                }
+                'pi':  [ #  size layer  activation   initialization
+                           (16, 'LSTM', 'identity',      None        ),
+                           (32,   'FC',     'relu', 'kaiming_uniform')
+                ],
+                'val': [ #  size layer  activation   initialization
+                          (128, 'LSTM', 'identity',      None        ),
+                          (300,   'FC',     'relu', 'kaiming_uniform')
+                ]
             } 
         }
     )

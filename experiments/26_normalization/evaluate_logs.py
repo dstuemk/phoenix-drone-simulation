@@ -74,6 +74,7 @@ if __name__ == '__main__':
     grouped = grouped.rename(columns=column_name_mapper)
     grouped[cn("use_standardized_obs")] *= 100
     grouped["actor"] = [v + f" (H={w})" for v,w in zip(df.actor,df.observation_history_size)]
+    grouped = grouped[grouped[cn("use_standardized_obs")] != 0]
     g = sns.FacetGrid(grouped,col="actor", hue=cn("use_standardized_obs"),col_wrap=2)
     g.map_dataframe(sns.kdeplot, x=cn("episode_length"),fill="True")
     for ax in g.axes.ravel():

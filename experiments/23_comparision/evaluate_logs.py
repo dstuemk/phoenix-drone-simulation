@@ -22,7 +22,7 @@ def column_name_mapper(name:str):
         'EpRet/Mean': 'mean(return)',
         'domain_randomization': 'DR',
         'observation_history_size': 'H',
-        'observation_model': 'obs_model'
+        'observation_model': 'perception'
     }.get(name, name)
 
 def load_dataframe(filename,names=None,folder_name="", trafo=lambda x:x):
@@ -148,7 +148,7 @@ if __name__ == '__main__':
     g = sns.catplot(
         data=grouped, 
         x=cn("latency"), y=cn("Reward"), 
-        row=cn("domain_randomization"), col=cn("observation_model"),
+        col=cn("domain_randomization"), row=cn("observation_model"),
         hue=cn("actor"), kind="box", hue_order=grouped[cn("actor")].unique()[::-1],
         height=3, aspect=1
     )

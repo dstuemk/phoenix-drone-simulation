@@ -138,9 +138,9 @@ def convert_actor_critic_to_h5(actor_critic: torch.nn.Module,
     print(f"Saved model to: {save_file_name_path}")
 
 
-def convert_actor_critic_to_dat(actor_critic: torch.nn.Module,
+def convert_actor_critic_to_json(actor_critic: torch.nn.Module,
                                file_path: str,
-                               file_name: str = 'model.dat',
+                               file_name: str = 'model.json',
                                save_file_path = None,
                                param_dtype = np.float16
                                ):
@@ -263,9 +263,19 @@ def convert_actor_critic_to_dat(actor_critic: torch.nn.Module,
     if save_file_path is not None:
         file_path = save_file_path
     os.makedirs(file_path, exist_ok=True)
-    save_file_name_path = os.path.join(file_path, file_name)
-    print(f"Save model to: {save_file_name_path}")
-    print(net_str,  file=open(save_file_name_path, 'w'))
+
+    conf_file_name = os.path.join(file_path, "config.json")
+    conf_dict = {}
+    with open(conf_file_name) as json_file:
+        conf_dict = json.load(json_file)
+    export_dict = {
+        **conf_dict,
+        'policy_net': net_str
+    }
+    export_file_name = os.path.join(file_path, file_name)
+    print(f"Save model to: {export_file_name}")
+    with open(export_file_name, 'w') as fp:
+        json.dump(export_dict, fp)
 
     actor_critic.training = False
     actor_critic.reset_states()

@@ -23,15 +23,15 @@ def convert(ckpt,output,save_file_path=None):
             file_path=ckpt,
             save_file_path=save_file_path
         )
-    elif output == 'dat':
+    elif output == 'json':
         ac, env = utils.load_actor_critic_and_env_from_disk(ckpt)
-        export.convert_actor_critic_to_dat(
+        export.convert_actor_critic_to_json(
             actor_critic=ac,
             file_path=ckpt,
             save_file_path=save_file_path
         )
     else:
-        raise ValueError('Expecting h5 file output.')
+        raise ValueError('Unexpected file output.')
 
 
 if __name__ == '__main__':
@@ -40,8 +40,8 @@ if __name__ == '__main__':
     )
     parser.add_argument('--ckpt', type=str, required=True,
                         help='Name path of the file to be converted.}')
-    parser.add_argument('--output', type=str, default='dat',
-                        help='Choose output file format: [h5, dat].}')
+    parser.add_argument('--output', type=str, default='json',
+                        help='Choose output file format: [h5, json].}')
     args = parser.parse_args()
 
     convert(args.ckpt,args.output)

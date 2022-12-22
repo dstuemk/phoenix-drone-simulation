@@ -64,7 +64,6 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             seq_len: int = 128,      # Splits path into smaller sequences
             seq_overlap: int = 64,   # Sequences overlap e.g. 16 timesteps
             vf_lr: float = 1e-3,
-            weight_initialization: str = 'kaiming_uniform',
             save_freq: int = 10,
             seed: int = 0,
             video_freq: int = -1,  # set to positive integer for video recording
@@ -144,7 +143,6 @@ class IWPGAlgorithm(core.OnPolicyGradientAlgorithm):
             action_space=self.env.action_space,
             use_standardized_obs=use_standardized_obs >= 0.0,
             use_scaled_rewards=use_reward_scaling,
-            weight_initialization=weight_initialization,
             ac_kwargs=ac_kwargs
         )
 

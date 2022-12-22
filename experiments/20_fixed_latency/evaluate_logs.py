@@ -142,8 +142,7 @@ if __name__ == '__main__':
     g = sns.catplot(
         data=grouped, 
         x=cn("domain_randomization"), y=cn("Reward"), col=cn("observation_model"),
-        row=cn("latency"), hue=cn("actor"), kind="box", 
-        hue_order=grouped[cn("actor")].unique()[::-1],
+        row=cn("latency"), hue=cn("actor"), kind="box",
         height=3, aspect=1
     )
     g.set(yscale='symlog')
@@ -162,7 +161,7 @@ if __name__ == '__main__':
             float(pid.median()),
             ls="--", color='k')
         ax.set_xlim(xlim)
-    save_figure("reward_flights")
+    save_figure(f"reward_flights")
 
 
     # Real-world success rate

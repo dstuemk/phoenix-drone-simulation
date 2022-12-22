@@ -5,20 +5,18 @@
 
 def defaults():
     return dict(
-        actor='recurrent',
-        critic='recurrent',
+        actor='nn',
+        critic='nn',
         ac_kwargs={
-            'pi': {
-                'activation': 'identity', 
-                'hidden_sizes': [20, 20],
-                'layer': 'GRU'
-            }, 
-            'val': {
-                'activation': 'identity', 
-                'hidden_sizes': [128, 128],
-                'layer': 'GRU'
-            }
-        },
+            'pi':  [ #  size layer  activation   initialization
+                       (16, 'LSTM', 'identity',      None        ),
+                       (32,   'FC',     'relu', 'kaiming_uniform')
+            ],
+            'val': [ #  size layer  activation   initialization
+                      (128, 'LSTM', 'identity',      None        ),
+                      (300,   'FC',     'relu', 'kaiming_uniform')
+            ]
+        } ,
         adv_estimation_method='gae',
         epochs=300,  # 3.2M steps
         gamma=0.99,

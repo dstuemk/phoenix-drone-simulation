@@ -41,8 +41,9 @@ def convert_str_to_torch_functional(activation):
 def convert_str_to_torch_layer(layer):
     if isinstance(layer, str):  # convert string to torch layer
         layers = {
-            'GRU': nn.GRU,
-            'LSTM': nn.LSTM
+            'GRU':  lambda *args,**kwargs: nn.GRU(*args,**kwargs,batch_first=True),
+            'LSTM': lambda *args,**kwargs: nn.LSTM(*args,**kwargs,batch_first=True),
+            'FC':   nn.Linear,
         }
         assert layer in layers
         layer = layers[layer]
@@ -77,6 +78,74 @@ class StatefulRNN(nn.Module):
     if isinstance(state, list):
       return [torch.nan_to_num(s.detach()) for s in state]
     return torch.nan_to_num(state.detach())
+
+def initialize_weights(layer, initialization):
+    if initialization is None:
+        return layer
+    init_funcs = {
+        'kaiming_uniform': lambda : nn.init.kaiming_uniform_(layer.weight, a=np.sqrt(5)),
+        'xavier_normal':   lambda : nn.init.xavier_normal_(layer.weight),
+        'glorot':          lambda : nn.init.xavier_uniform_(layer.weight),
+        'xavier_uniform':  lambda : nn.init.xavier_uniform_(layer.weight),
+        'orthogonal':      lambda : nn.init.orthogonal_(layer.weight, gain=np.sqrt(2))
+    }
+    if not initialization in init_funcs:
+        raise NotImplementedError()
+    init_fun = init_funcs[initialization]
+    init_fun()
+    return layer
+
+def get_layer(type, initialization):
+    layers = {
+        'GRU':  lambda *args,**kwargs: initialize_weights(
+            StatefulRNN(nn.GRU(*args,**kwargs,batch_first=True)),
+            initialization),
+        'LSTM': lambda *args,**kwargs: initialize_weights(
+            StatefulRNN(nn.LSTM(*args,**kwargs,batch_first=True)),
+            initialization),
+        'FC':   lambda *args,**kwargs: initialize_weights(
+            nn.Linear(*args,**kwargs),
+            initialization),
+    }
+    if not type in layers:
+        raise NotImplementedError()
+    return layers[type]
+
+def get_activation(activation):
+    activations = {
+        'identity': nn.Identity,
+        'relu': nn.ReLU,
+        'sigmoid': nn.Sigmoid,
+        'softplus': nn.Softplus,
+        'tanh': nn.Tanh
+    }
+    assert activation in activations
+    return activations[activation]
+
+def build_network(
+    inp_dim:int,
+    out_dim:int,
+    descr=[ #  size layer  activation   initialization
+               (16, 'LSTM', 'identity',      None        ),
+               (32,   'FC',     'relu', 'kaiming_uniform')]
+):
+    assert len(descr) > 0
+    descr = descr + \
+            [(out_dim, 'FC', 'identity', 'kaiming_uniform')]
+    layers = []
+    for lay_descr in descr:
+        out_dim = lay_descr[0]
+        lay_fun = lay_descr[1]
+        lay_act = lay_descr[2]
+        lay_ini = lay_descr[3]
+        lay_fn = get_layer(lay_fun, lay_ini)
+        act_fn = get_activation(lay_act)
+        layers += [lay_fn(inp_dim, out_dim), act_fn()]
+        inp_dim = out_dim
+    return ( # Return network and recurrent layers
+        nn.Sequential(*layers),
+        [l for l in layers if isinstance(l,StatefulRNN)]
+    )
 
 def build_recurrent_network(
         sizes,

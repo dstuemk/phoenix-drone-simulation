@@ -81,14 +81,13 @@ class OnPolicyGradientAlgorithm(Algorithm, abc.ABC):
 
 class ActorCritic(nn.Module):
     def __init__(self,
-                 actor_type,
                  observation_space,
                  action_space,
                  ac_kwargs,
-                 critic_type = 'forward',
+                 actor_type = 'nn',
+                 critic_type = 'nn',
                  use_standardized_obs = True,
-                 use_scaled_rewards = False,                 
-                 weight_initialization='kaiming_uniform'
+                 use_scaled_rewards = False
                  ):
         super().__init__()
         self.obs_shape = observation_space.shape
@@ -110,10 +109,9 @@ class ActorCritic(nn.Module):
         actor_fn = get_registered_actor_fn(actor_type, distribution_type)
         self.pi = actor_fn(obs_dim=obs_dim,
                            act_dim=act_dim,
-                           weight_initialization=weight_initialization,
-                           **ac_kwargs['pi'])
+                           layers=ac_kwargs['pi'])
         critic_fn = get_registered_critic_fn(critic_type)
-        self.v = critic_fn(obs_dim, **ac_kwargs['val'])
+        self.v = critic_fn(obs_dim, layers=ac_kwargs['val'])
 
         self.ret_oms = OnlineMeanStd(shape=(1,)) if use_scaled_rewards else None
     
