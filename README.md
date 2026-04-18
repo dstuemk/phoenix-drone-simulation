@@ -182,6 +182,12 @@ his trained Actor Critic module and convert the model to a json file format.
     *Sven Gronauer, Matthias Kissel, Luca Sacchetto, Mathias Korte, Klaus Diepold*
     
     https://arxiv.org/abs/2201.01369
+    
+2.  Comparing Quadrotor Control Policies for Zero-Shot Reinforcement Learning under Uncertainty and Partial Observability
+    
+    *Sven Gronauer, Daniel Stümke, Klaus Diepold*
+    
+    https://ieeexplore.ieee.org/abstract/document/10341941
 
 
 
